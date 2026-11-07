@@ -160,8 +160,11 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 telemetry = telemetry,
                                 voltageHistory = voltageHistory,
                                 currentHistory = currentHistory,
+                                prizeRoadData = prizeRoadData,
                                 themeConfig = themeConfig,
                                 onSelectLivingState = { viewModel.selectLivingState(it) },
+                                onTriggerEmergencyCooling = { viewModel.triggerEmergencyCooling() },
+                                onAddSimulatedMah = { viewModel.addCumulativeMah(it) },
                                 onNavigateToPage = { /* handled by tab selection */ }
                             )
                             NavigationTab.STREAKS -> Page2StreaksAndEggScreen(
