@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Icon
@@ -38,7 +37,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,23 +44,27 @@ import com.example.data.BatteryTelemetry
 import com.example.data.GlassThemeConfig
 import com.example.data.MetricType
 import com.example.data.SessionLog
-import com.example.data.TemperatureUnit
 import com.example.data.TelemetryPoint
+import com.example.data.TemperatureUnit
 import com.example.ui.components.DetailedWaveformGraph
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.MetricSparkline
 import com.example.ui.components.PulsingNeonDot
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileCoralRed
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 import java.text.NumberFormat
 import java.util.Locale
 
 /**
  * PAGE 5: My Space
  * Live metrics (Voltage, Current, Wattage, Temp, Health) and Vital Pulse Log.
+ * Styled in Light Neumorphism with dual shadows & Dark Slate mode.
  */
 @Composable
 fun Page5MySpaceScreen(
@@ -76,9 +78,11 @@ fun Page5MySpaceScreen(
     onAddVitalLog: (String, String, String, String) -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
     val glow = themeConfig.glowIntensity
     val numberFormat = remember { NumberFormat.getNumberInstance(Locale.US) }
+    val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
 
@@ -94,10 +98,7 @@ fun Page5MySpaceScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(bottom = 110.dp)
-            .graphicsLayer {
-                // 90 FPS rendering isolation
-                clip = false
-            }
+            .graphicsLayer { clip = false }
     ) {
         // Space Header Banner
         Box(
@@ -108,6 +109,7 @@ fun Page5MySpaceScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -119,34 +121,34 @@ fun Page5MySpaceScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(accentColor.copy(alpha = 0.2f))
-                                    .border(1.dp, accentColor, CircleShape),
+                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                    .border(1.2.dp, accentColor, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.QueryStats,
                                     contentDescription = null,
                                     tint = accentColor,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
                                     text = "MY SPACE TELEMETRY CONSOLE",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    letterSpacing = 1.sp,
-                                    color = TextLuminous
+                                    letterSpacing = 0.5.sp,
+                                    color = textColor
                                 )
                                 Text(
                                     text = "Live Hardware Registers & Vital Pulse Log",
-                                    fontFamily = SpaceGroteskFontFamily,
+                                    fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 11.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                         }
@@ -158,7 +160,7 @@ fun Page5MySpaceScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 2x2 Floating Data Cards Grid
+        // 2x2 Floating Data Cards Grid (Tactile Neumorphic Cards)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,16 +175,18 @@ fun Page5MySpaceScreen(
                 MySpaceMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "VOLTAGE",
-                    value = "${numberFormat.format(telemetry.voltageMv)}",
+                    value = numberFormat.format(telemetry.voltageMv),
                     unit = "mV",
                     subtext = "Nominal 3.7V - 4.4V",
                     points = voltageHistory,
                     accentColor = accentColor,
+                    isDarkMode = isDark,
                     glowIntensity = glow,
                     onClick = { selectedMetric = MetricType.VOLTAGE }
                 )
 
                 val currentSign = if (telemetry.currentMa >= 0) "+" else ""
+                val currentAccent = if (telemetry.currentMa >= 0) TactileGreen else TactileCoralRed
                 MySpaceMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "CURRENT",
@@ -190,7 +194,8 @@ fun Page5MySpaceScreen(
                     unit = "mA",
                     subtext = if (telemetry.currentMa >= 0) "Inflow charge" else "Discharge draw",
                     points = currentHistory,
-                    accentColor = NeonCyan,
+                    accentColor = currentAccent,
+                    isDarkMode = isDark,
                     glowIntensity = glow,
                     onClick = { selectedMetric = MetricType.CURRENT }
                 )
@@ -209,6 +214,7 @@ fun Page5MySpaceScreen(
                     subtext = "P = V × I Instantaneous",
                     points = wattageHistory,
                     accentColor = accentColor,
+                    isDarkMode = isDark,
                     glowIntensity = glow,
                     onClick = { selectedMetric = MetricType.WATTAGE }
                 )
@@ -218,6 +224,7 @@ fun Page5MySpaceScreen(
                 } else {
                     telemetry.temperatureC
                 }
+                val tempAccent = if (telemetry.temperatureC >= 40f) TactileCoralRed else accentColor
                 MySpaceMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "TEMPERATURE",
@@ -225,7 +232,8 @@ fun Page5MySpaceScreen(
                     unit = themeConfig.temperatureUnit.symbol,
                     subtext = if (telemetry.temperatureC >= 40f) "Thermal Warning" else "Nominal Heat Zone",
                     points = temperatureHistory,
-                    accentColor = if (telemetry.temperatureC >= 40f) Color(0xFFFF3B30) else accentColor,
+                    accentColor = tempAccent,
+                    isDarkMode = isDark,
                     glowIntensity = glow,
                     onClick = { selectedMetric = MetricType.TEMPERATURE }
                 )
@@ -243,6 +251,7 @@ fun Page5MySpaceScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -253,11 +262,11 @@ fun Page5MySpaceScreen(
                     ) {
                         Text(
                             text = "${selectedMetric.title.uppercase()} REAL-TIME OSCILLOSCOPE",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            letterSpacing = 1.sp,
-                            color = TextLuminous
+                            letterSpacing = 0.5.sp,
+                            color = textColor
                         )
                         PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
                     }
@@ -267,6 +276,7 @@ fun Page5MySpaceScreen(
                     DetailedWaveformGraph(
                         points = activePoints,
                         lineColor = accentColor,
+                        isDarkMode = isDark,
                         glowIntensity = glow,
                         heightDp = 150.dp,
                         showGrid = true
@@ -287,17 +297,17 @@ fun Page5MySpaceScreen(
         ) {
             Text(
                 text = "VITAL PULSE HARDWARE LOG",
-                fontFamily = RajdhaniFontFamily,
+                fontFamily = OutfitFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
-                letterSpacing = 1.sp,
-                color = TextLuminous
+                letterSpacing = 0.5.sp,
+                color = textColor
             )
 
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(accentColor.copy(alpha = 0.2f))
+                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
                     .border(1.dp, accentColor, RoundedCornerShape(10.dp))
                     .clickable {
                         onAddVitalLog(
@@ -319,7 +329,7 @@ fun Page5MySpaceScreen(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "BENCHMARK NOW",
-                        fontFamily = RajdhaniFontFamily,
+                        fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = accentColor
@@ -338,7 +348,12 @@ fun Page5MySpaceScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             sessionLogs.forEach { log ->
-                VitalLogItem(log = log, accentColor = accentColor, glow = glow)
+                VitalLogItem(
+                    log = log,
+                    accentColor = accentColor,
+                    isDarkMode = isDark,
+                    glow = glow
+                )
             }
         }
     }
@@ -353,16 +368,18 @@ fun MySpaceMetricCard(
     points: List<TelemetryPoint>,
     modifier: Modifier = Modifier,
     accentColor: Color,
+    isDarkMode: Boolean,
     glowIntensity: Float,
     onClick: () -> Unit
 ) {
     LiquidGlassCard(
         modifier = modifier,
         accentColor = accentColor,
+        isDarkMode = isDarkMode,
         glowIntensity = glowIntensity,
         onClick = onClick
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -370,11 +387,11 @@ fun MySpaceMetricCard(
             ) {
                 Text(
                     text = title,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 11.sp,
-                    letterSpacing = 0.8.sp,
-                    color = TextMutedGreen
+                    letterSpacing = 0.5.sp,
+                    color = TextSlate
                 )
                 PulsingNeonDot(color = accentColor, sizeDp = 5.dp)
             }
@@ -384,15 +401,15 @@ fun MySpaceMetricCard(
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = value,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
-                    color = TextLuminous
+                    color = if (isDarkMode) TextWhite else TextCharcoal
                 )
                 Spacer(modifier = Modifier.width(3.dp))
                 Text(
                     text = unit,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp,
                     color = accentColor,
@@ -402,16 +419,17 @@ fun MySpaceMetricCard(
 
             Text(
                 text = subtext,
-                fontFamily = SpaceGroteskFontFamily,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 9.sp,
-                color = TextMutedGreen
+                color = TextSlate
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             MetricSparkline(
                 points = points,
                 lineColor = accentColor,
+                isDarkMode = isDarkMode,
                 glowIntensity = glowIntensity,
                 heightDp = 30.dp
             )
@@ -423,24 +441,26 @@ fun MySpaceMetricCard(
 fun VitalLogItem(
     log: SessionLog,
     accentColor: Color,
+    isDarkMode: Boolean,
     glow: Float
 ) {
     LiquidGlassCard(
         modifier = Modifier.fillMaxWidth(),
         accentColor = accentColor,
+        isDarkMode = isDarkMode,
         glowIntensity = glow
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(accentColor.copy(alpha = 0.15f))
+                    .background(accentColor.copy(alpha = if (isDarkMode) 0.22f else 0.12f))
                     .border(1.dp, accentColor.copy(alpha = 0.4f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
@@ -453,7 +473,7 @@ fun VitalLogItem(
                     },
                     contentDescription = null,
                     tint = accentColor,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
@@ -466,23 +486,23 @@ fun VitalLogItem(
                 ) {
                     Text(
                         text = log.title,
-                        fontFamily = RajdhaniFontFamily,
+                        fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
-                        color = TextLuminous
+                        color = if (isDarkMode) TextWhite else TextCharcoal
                     )
                     Text(
                         text = log.timestampFormatted,
-                        fontFamily = SpaceGroteskFontFamily,
+                        fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 9.sp,
-                        color = TextMutedGreen
+                        color = TextSlate
                     )
                 }
                 Text(
                     text = log.description,
-                    fontFamily = SpaceGroteskFontFamily,
+                    fontFamily = PlusJakartaSansFontFamily,
                     fontSize = 10.sp,
-                    color = TextMutedGreen,
+                    color = TextSlate,
                     lineHeight = 14.sp
                 )
             }
@@ -491,14 +511,14 @@ fun VitalLogItem(
 
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0x3310241C))
-                    .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFF1F5F9))
+                    .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = log.statTag,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
                     color = accentColor

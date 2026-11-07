@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -40,23 +39,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.ObsidianOled
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 
 /**
- * Liquid Glass M5 Card featuring deep dark translucent obsidian glass background,
- * frosted inner highlights, and vivid blurry glowing neon phosphorus green edges.
+ * Tactile Neumorphic & Soft Liquid Glass Card
+ * Implements dual-shadow extrusion: top-left specular highlight and bottom-right diffusion shadow.
  */
 @Composable
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(24.dp),
-    accentColor: Color = NeonPhosphorusGreen,
-    glowIntensity: Float = 0.85f,
+    shape: Shape = RoundedCornerShape(22.dp),
+    accentColor: Color = TactileRoyalBlue,
+    isDarkMode: Boolean = false,
+    glowIntensity: Float = 0.75f,
     onClick: (() -> Unit)? = null,
     testTag: String? = null,
     content: @Composable BoxScope.() -> Unit
@@ -67,73 +67,73 @@ fun LiquidGlassCard(
 
     val tagModifier = if (testTag != null) Modifier.testTag(testTag) else Modifier
 
+    val surfaceColor = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
+    val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0xEBFFFFFF)
+    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x4DE2E8F0)
+
     Box(
         modifier = modifier
             .then(tagModifier)
-            // Outer glowing blur halo around card edges
+            // Neumorphic Dual Shadows (Extruded look)
             .drawBehind {
-                val glowAlpha = (0.22f * glowIntensity).coerceIn(0.05f, 0.45f)
-                val strokeWidthPx = 3.dp.toPx()
+                val shadowOffset = 5.dp.toPx()
+                val highlightOffset = -3.dp.toPx()
+
+                // Bottom-right soft diffusion shadow
                 drawRoundRect(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = glowAlpha),
-                            Color.Transparent
-                        ),
-                        center = Offset(size.width / 2f, size.height / 2f),
-                        radius = size.width.coerceAtLeast(size.height) * 0.75f
-                    ),
-                    size = size
+                    color = shadowColor,
+                    topLeft = Offset(shadowOffset, shadowOffset),
+                    size = size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(22.dp.toPx(), 22.dp.toPx())
+                )
+
+                // Top-left soft specular highlight
+                drawRoundRect(
+                    color = highlightColor,
+                    topLeft = Offset(highlightOffset, highlightOffset),
+                    size = size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(22.dp.toPx(), 22.dp.toPx())
                 )
             }
             .clip(shape)
-            // Translucent Obsidian Glass Background
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xD9121A17), // Frosted obsidian top
-                        Color(0xE60D1210)  // Deep obsidian bottom
-                    )
-                )
-            )
-            // Specular refraction highlight diagonal sheen
+            .background(surfaceColor)
+            // Subtle liquid glass gradient sheen
             .drawBehind {
                 drawRect(
                     brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.08f),
-                            Color.White.copy(alpha = 0.01f),
-                            Color.Transparent
-                        ),
+                        colors = if (isDarkMode) {
+                            listOf(
+                                Color.White.copy(alpha = 0.05f),
+                                Color.Transparent
+                            )
+                        } else {
+                            listOf(
+                                Color.White,
+                                Color(0xFFFAFBFD),
+                                Color(0xFFF4F7FB)
+                            )
+                        },
                         start = Offset(0f, 0f),
                         end = Offset(size.width, size.height)
                     )
                 )
-                // Soft neon inner glow from top-left
+
+                // Subtle accent glow tint from top edge
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            accentColor.copy(alpha = 0.12f * glowIntensity),
+                            accentColor.copy(alpha = if (isDarkMode) 0.12f * glowIntensity else 0.06f * glowIntensity),
                             Color.Transparent
                         ),
-                        center = Offset(size.width * 0.15f, 0f),
-                        radius = size.width * 0.6f
+                        center = Offset(size.width * 0.2f, 0f),
+                        radius = size.width * 0.7f
                     )
                 )
             }
-            // Frosted border with neon luminous edges
             .border(
-                width = 1.2.dp,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        accentColor.copy(alpha = (0.75f * glowIntensity).coerceAtMost(0.95f)),
-                        accentColor.copy(alpha = 0.25f),
-                        Color(0x33FFFFFF),
-                        accentColor.copy(alpha = (0.5f * glowIntensity).coerceAtMost(0.85f))
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
-                ),
+                width = 1.dp,
+                color = borderColor,
                 shape = shape
             )
             .then(clickableModifier),
@@ -142,12 +142,12 @@ fun LiquidGlassCard(
 }
 
 /**
- * Pulsing neon indicator dot
+ * Pulsing Indicator Dot
  */
 @Composable
 fun PulsingNeonDot(
     modifier: Modifier = Modifier,
-    color: Color = NeonPhosphorusGreen,
+    color: Color = TactileRoyalBlue,
     sizeDp: Dp = 8.dp
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
@@ -161,8 +161,8 @@ fun PulsingNeonDot(
         label = "dotScale"
     )
     val alpha by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 1.0f,
+        initialValue = 0.4f,
+        targetValue = 0.9f,
         animationSpec = infiniteRepeatable(
             animation = tween(1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -174,14 +174,12 @@ fun PulsingNeonDot(
         modifier = modifier.size(sizeDp * 1.8f),
         contentAlignment = Alignment.Center
     ) {
-        // Outer halo
         Box(
             modifier = Modifier
                 .size(sizeDp * scale)
                 .clip(CircleShape)
-                .background(color.copy(alpha = alpha * 0.45f))
+                .background(color.copy(alpha = alpha * 0.35f))
         )
-        // Core dot
         Box(
             modifier = Modifier
                 .size(sizeDp)
@@ -192,27 +190,25 @@ fun PulsingNeonDot(
 }
 
 /**
- * Neon Pill Badge for status / mode labels
+ * Tactile Neumorphic Pill Badge
  */
 @Composable
 fun NeonBadge(
     text: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = NeonPhosphorusGreen,
+    accentColor: Color = TactileRoyalBlue,
+    isDarkMode: Boolean = false,
     icon: ImageVector? = null
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0x3300FF87).copy(alpha = 0.15f))
+            .background(
+                if (isDarkMode) Color(0x33334155) else Color(0xFFF1F5F9)
+            )
             .border(
                 width = 1.dp,
-                brush = Brush.horizontalGradient(
-                    listOf(
-                        accentColor.copy(alpha = 0.6f),
-                        accentColor.copy(alpha = 0.2f)
-                    )
-                ),
+                color = accentColor.copy(alpha = 0.3f),
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 10.dp, vertical = 4.dp),
@@ -233,23 +229,24 @@ fun NeonBadge(
         }
         Text(
             text = text.uppercase(),
-            fontFamily = RajdhaniFontFamily,
+            fontFamily = OutfitFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
-            letterSpacing = 0.8.sp,
+            letterSpacing = 0.6.sp,
             color = accentColor
         )
     }
 }
 
 /**
- * Top App Header with Liquid Glass styling
+ * Top App Bar with Tactile Neumorphic Styling
  */
 @Composable
 fun LiquidTopAppBar(
     title: String,
     subtitle: String? = null,
-    accentColor: Color = NeonPhosphorusGreen,
+    accentColor: Color = TactileRoyalBlue,
+    isDarkMode: Boolean = false,
     rightAction: (@Composable () -> Unit)? = null
 ) {
     Row(
@@ -263,22 +260,22 @@ fun LiquidTopAppBar(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = title,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp,
-                    letterSpacing = 1.sp,
-                    color = TextLuminous
+                    fontSize = 22.sp,
+                    letterSpacing = (-0.2).sp,
+                    color = if (isDarkMode) TextWhite else TextCharcoal
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                PulsingNeonDot(color = accentColor, sizeDp = 7.dp)
+                PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
             }
             if (subtitle != null) {
                 Text(
                     text = subtitle,
-                    fontFamily = SpaceGroteskFontFamily,
+                    fontFamily = PlusJakartaSansFontFamily,
                     fontWeight = FontWeight.Normal,
-                    fontSize = 12.sp,
-                    color = TextMutedGreen
+                    fontSize = 11.sp,
+                    color = TextSlate
                 )
             }
         }

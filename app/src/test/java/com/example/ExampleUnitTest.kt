@@ -10,6 +10,7 @@ import com.example.data.LivingBatteryState
 import com.example.data.PrizeRoadData
 import com.example.data.StreakData
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -38,9 +39,9 @@ class ExampleUnitTest {
     fun testLivingBatteryStates() {
         assertEquals(4, LivingBatteryState.entries.size)
         assertTrue(LivingBatteryState.OVERDRIVE_HEATING.isBleeding)
-        assertEquals(false, LivingBatteryState.COOLING.isBleeding)
-        assertEquals(false, LivingBatteryState.ENERGY_STORING.isBleeding)
-        assertEquals(false, LivingBatteryState.DEEP_SLEEP.isBleeding)
+        assertFalse(LivingBatteryState.COOLING.isBleeding)
+        assertFalse(LivingBatteryState.ENERGY_STORING.isBleeding)
+        assertFalse(LivingBatteryState.DEEP_SLEEP.isBleeding)
     }
 
     @Test
@@ -64,8 +65,13 @@ class ExampleUnitTest {
     @Test
     fun testGlassThemeConfigDefaults() {
         val config = GlassThemeConfig()
-        assertEquals("Phosphorus Green (#00FF87)", config.accentName)
+        assertFalse(config.isDarkMode) // Defaults to Light Neumorphism
+        assertEquals("Royal Blue (#2962FF)", config.accentName)
         assertTrue(config.glowIntensity in 0.3f..1.0f)
         assertTrue(config.target90FpsMode)
+
+        // Dark mode toggle
+        val darkConfig = config.copy(isDarkMode = true)
+        assertTrue(darkConfig.isDarkMode)
     }
 }

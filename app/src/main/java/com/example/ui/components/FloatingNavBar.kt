@@ -46,88 +46,60 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 
 enum class NavigationTab(val label: String, val icon: ImageVector, val tag: String) {
     BATTERY("Battery", Icons.Default.Bolt, "nav_battery"),
-    STREAKS("Streaks & Egg", Icons.Default.Shield, "nav_streaks"),
+    STREAKS("Streaks", Icons.Default.Shield, "nav_streaks"),
     PRIZE_ROAD("Prize Road", Icons.Default.MilitaryTech, "nav_prize_road"),
     TECH_CREW("Tech Crew", Icons.Default.Engineering, "nav_tech_crew"),
     MY_SPACE("My Space", Icons.Default.QueryStats, "nav_my_space")
 }
 
 /**
- * 90Hz Hardware-Accelerated Floating Glass Navigation Bar
+ * Soft Frosted Light Glass & Neumorphic Floating Navigation Bar
  */
 @Composable
 fun FloatingGlassNavBar(
     selectedTab: NavigationTab,
     onTabSelected: (NavigationTab) -> Unit,
     modifier: Modifier = Modifier,
-    accentColor: Color = NeonPhosphorusGreen,
-    glowIntensity: Float = 0.88f
+    isDarkMode: Boolean = false,
+    accentColor: Color = TactileRoyalBlue
 ) {
+    val barBackground = if (isDarkMode) Color(0xF01E293B) else Color(0xEBFFFFFF)
+    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
+    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x66E2E8F0)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-            .graphicsLayer {
-                // Hardware layer isolation for 90 FPS rendering
-                clip = false
-                shadowElevation = 0f
-            },
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+            .graphicsLayer { clip = false },
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                // Dual Soft Neumorphic Drop Shadow
                 .drawBehind {
                     drawRoundRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                accentColor.copy(alpha = 0.22f * glowIntensity),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width / 2f, size.height / 2f),
-                            radius = size.width * 0.55f
-                        ),
-                        size = size
+                        color = shadowColor,
+                        topLeft = Offset(0f, 6.dp.toPx()),
+                        size = size,
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(26.dp.toPx(), 26.dp.toPx())
                     )
                 }
                 .clip(RoundedCornerShape(26.dp))
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xEE111A16),
-                            Color(0xF80A0E0D)
-                        )
-                    )
-                )
-                .drawBehind {
-                    drawRect(
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.08f),
-                                Color.Transparent
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, size.height)
-                        )
-                    )
-                }
+                .background(barBackground)
                 .border(
                     width = 1.2.dp,
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.35f * glowIntensity),
-                            accentColor.copy(alpha = 0.9f * glowIntensity),
-                            accentColor.copy(alpha = 0.35f * glowIntensity)
-                        )
-                    ),
+                    color = borderColor,
                     shape = RoundedCornerShape(26.dp)
                 )
                 .padding(horizontal = 4.dp, vertical = 4.dp)
@@ -141,7 +113,7 @@ fun FloatingGlassNavBar(
                     val isSelected = tab == selectedTab
 
                     val iconColor by animateColorAsState(
-                        targetValue = if (isSelected) accentColor else TextMutedGreen,
+                        targetValue = if (isSelected) accentColor else TextSlate,
                         animationSpec = spring(
                             dampingRatio = Spring.DampingRatioLowBouncy,
                             stiffness = Spring.StiffnessMediumLow
@@ -150,13 +122,17 @@ fun FloatingGlassNavBar(
                     )
 
                     val pillBackground by animateColorAsState(
-                        targetValue = if (isSelected) accentColor.copy(alpha = 0.18f) else Color.Transparent,
+                        targetValue = if (isSelected) {
+                            if (isDarkMode) accentColor.copy(alpha = 0.22f) else Color(0xFFF1F5F9)
+                        } else Color.Transparent,
                         animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
                         label = "tabPillBg"
                     )
 
                     val pillBorderColor by animateColorAsState(
-                        targetValue = if (isSelected) accentColor.copy(alpha = 0.55f * glowIntensity) else Color.Transparent,
+                        targetValue = if (isSelected) {
+                            if (isDarkMode) accentColor.copy(alpha = 0.5f) else Color(0x66CBD5E1)
+                        } else Color.Transparent,
                         label = "tabPillBorder"
                     )
 
@@ -177,37 +153,29 @@ fun FloatingGlassNavBar(
                             ) {
                                 onTabSelected(tab)
                             }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                if (isSelected) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .clip(CircleShape)
-                                            .background(accentColor.copy(alpha = 0.25f * glowIntensity))
-                                    )
-                                }
-                                Icon(
-                                    imageVector = tab.icon,
-                                    contentDescription = tab.label,
-                                    tint = iconColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                tint = iconColor,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = tab.label,
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                 fontSize = 10.sp,
-                                letterSpacing = 0.4.sp,
-                                color = if (isSelected) TextLuminous else TextMutedGreen,
+                                letterSpacing = 0.2.sp,
+                                color = if (isSelected) {
+                                    if (isDarkMode) TextWhite else TextCharcoal
+                                } else TextSlate,
                                 maxLines = 1
                             )
                         }

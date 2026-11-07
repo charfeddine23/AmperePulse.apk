@@ -1,10 +1,12 @@
 package com.example.data
 
 import androidx.compose.ui.graphics.Color
-import com.example.ui.theme.CyberViolet
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.SolarAmber
+import com.example.ui.theme.TactileAmber
+import com.example.ui.theme.TactileCoralRed
+import com.example.ui.theme.TactileCyan
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TactileViolet
 
 enum class BatteryStatus(val label: String) {
     CHARGING("Charging"),
@@ -44,7 +46,7 @@ enum class MetricType(val title: String, val unit: String) {
 }
 
 /**
- * 4 Living States for the Dynamic Battery
+ * 4 Living States with Clean Neumorphic & Liquid Glass Color Palette
  */
 enum class LivingBatteryState(
     val title: String,
@@ -56,32 +58,32 @@ enum class LivingBatteryState(
 ) {
     OVERDRIVE_HEATING(
         title = "Overdrive & Heating",
-        neonPrimary = Color(0xFFFF3B30),
-        neonSecondary = Color(0xFFFF9500),
-        auraDescription = "Thermal dissipation overload. Thermal stress active.",
+        neonPrimary = TactileCoralRed, // #FF3D00
+        neonSecondary = Color(0xFFFF6E40),
+        auraDescription = "Thermal dissipation overload. High heat load active.",
         xpRateLabel = "-1 XP / min (Thermal Bleed)",
         isBleeding = true
     ),
     COOLING(
         title = "Cryo Cooling",
-        neonPrimary = Color(0xFF00F0FF),
-        neonSecondary = Color(0xFF007AFF),
+        neonPrimary = TactileCyan, // #00B0FF
+        neonSecondary = Color(0xFF40C4FF),
         auraDescription = "Vapor chamber active. Cell matrix normalizing.",
         xpRateLabel = "+2 XP / min (Recovery)",
         isBleeding = false
     ),
     ENERGY_STORING(
         title = "Energy Storing",
-        neonPrimary = Color(0xFF00FF87),
-        neonSecondary = Color(0xFF10FFA0),
-        auraDescription = "Ultra-fast plasma influx. Lithium saturation active.",
+        neonPrimary = TactileGreen, // #00C853
+        neonSecondary = Color(0xFF69F0AE),
+        auraDescription = "Ultra-fast energy influx. Active lithium saturation.",
         xpRateLabel = "+5 XP / min (Fast Pulse)",
         isBleeding = false
     ),
     DEEP_SLEEP(
         title = "Deep Sleep",
-        neonPrimary = Color(0xFFBF5AF2),
-        neonSecondary = Color(0xFF5E5CE6),
+        neonPrimary = TactileViolet, // #7C4DFF
+        neonSecondary = Color(0xFFB388FF),
         auraDescription = "Sub-milliamp quiescent draw. Cell longevity mode.",
         xpRateLabel = "+1 XP / min (Longevity)",
         isBleeding = false
@@ -133,15 +135,15 @@ data class HatchedCompanion(
 )
 
 data class CyberEggData(
-    val eggName: String = "Neon Quantum Core Egg",
-    val incubationProgress: Float = 0.78f, // 0.0 to 1.0 (78%)
+    val eggName: String = "Organic Neo Core Egg",
+    val incubationProgress: Float = 0.78f,
     val isIncubating: Boolean = true,
     val currentXP: Int = 1840,
     val xpToHatch: Int = 2200,
     val hatchedList: List<HatchedCompanion> = listOf(
-        HatchedCompanion("1", "Cryo Sprite V1", "Rare", "+15% Cooling Velocity", Color(0xFF00F0FF)),
-        HatchedCompanion("2", "Volt Phantom", "Epic", "-10% Standby Drain", Color(0xFFA855F7)),
-        HatchedCompanion("3", "Phosphor Drake", "Legendary", "Auto-recharges 1 Shield daily", Color(0xFF00FF87))
+        HatchedCompanion("1", "Cryo Sprite V1", "Rare", "+15% Cooling Velocity", TactileCyan),
+        HatchedCompanion("2", "Volt Phantom", "Epic", "-10% Standby Drain", TactileViolet),
+        HatchedCompanion("3", "Emerald Drake", "Legendary", "Auto-recharges 1 Shield daily", TactileGreen)
     )
 )
 
@@ -150,14 +152,14 @@ data class PrizeNode(
     val requiredCumulativeMah: Long,
     val title: String,
     val rewardName: String,
-    val rewardType: String, // "THEME", "SHIELD", "TITLE", "CREW_BOOST"
+    val rewardType: String,
     val isMilestone: Boolean,
     val iconKey: String
 )
 
 data class PrizeRoadData(
-    val cumulativeMah: Long = 1845200L, // up to 10,000,000 mAh
-    val currentLevel: Int = 184,         // Level = cumulativeMah / 10,000 (1 to 1000)
+    val cumulativeMah: Long = 1845200L,
+    val currentLevel: Int = 184,
     val maxLevel: Int = 1000,
     val claimedMilestones: Set<Int> = setOf(5, 10, 15, 20, 25, 50, 75, 100, 150),
     val activeTitle: String = "Volt Grandmaster"
@@ -178,8 +180,9 @@ data class TechCrewMember(
 )
 
 data class GlassThemeConfig(
-    val glowIntensity: Float = 0.88f,
-    val accentColorIndex: Int = 0,
+    val isDarkMode: Boolean = false, // Defaults to Light Neumorphism!
+    val glowIntensity: Float = 0.75f,
+    val accentColorIndex: Int = 0, // 0 = Royal Blue (#2962FF), 1 = Vibrant Green (#00C853), 2 = Coral Red (#FF3D00), 3 = Violet (#7C4DFF)
     val glassBlurAmount: Float = 0.85f,
     val ambientLiquidWaves: Boolean = true,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
@@ -193,20 +196,20 @@ data class GlassThemeConfig(
 ) {
     val accentColor: Color
         get() = when (accentColorIndex) {
-            0 -> NeonPhosphorusGreen
-            1 -> NeonCyan
-            2 -> CyberViolet
-            3 -> SolarAmber
-            else -> NeonPhosphorusGreen
+            0 -> TactileRoyalBlue // #2962FF
+            1 -> TactileGreen     // #00C853
+            2 -> TactileCoralRed  // #FF3D00
+            3 -> TactileViolet    // #7C4DFF
+            else -> TactileRoyalBlue
         }
 
     val accentName: String
         get() = when (accentColorIndex) {
-            0 -> "Phosphorus Green (#00FF87)"
-            1 -> "Neon Cyan (#00E5FF)"
-            2 -> "Cyber Violet (#A855F7)"
-            3 -> "Solar Amber (#FFB800)"
-            else -> "Phosphorus Green"
+            0 -> "Royal Blue (#2962FF)"
+            1 -> "Tactile Green (#00C853)"
+            2 -> "Coral Red (#FF3D00)"
+            3 -> "Cosmic Violet (#7C4DFF)"
+            else -> "Royal Blue"
         }
 }
 

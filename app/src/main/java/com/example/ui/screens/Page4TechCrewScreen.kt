@@ -2,7 +2,6 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,13 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Engineering
-import androidx.compose.material.icons.filled.FireExtinguisher
-import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -45,14 +39,17 @@ import com.example.data.GlassThemeConfig
 import com.example.data.TechCrewMember
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.PulsingNeonDot
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 
 /**
  * PAGE 4: Tech Crew
  * Interactive Technicians, Cyber Heroes, and Firefighter cooling units.
+ * Styled in Light Neumorphism & Dark Slate mode with tactile depth.
  */
 @Composable
 fun Page4TechCrewScreen(
@@ -61,18 +58,17 @@ fun Page4TechCrewScreen(
     onTriggerAbility: (String) -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
     val glow = themeConfig.glowIntensity
+    val textColor = if (isDark) TextWhite else TextCharcoal
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(bottom = 110.dp)
-            .graphicsLayer {
-                // 90 FPS rendering isolation
-                clip = false
-            }
+            .graphicsLayer { clip = false }
     ) {
         // Hero Crew Station Banner
         Box(
@@ -83,6 +79,7 @@ fun Page4TechCrewScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -94,34 +91,34 @@ fun Page4TechCrewScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(accentColor.copy(alpha = 0.2f))
-                                    .border(1.dp, accentColor, CircleShape),
+                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                    .border(1.2.dp, accentColor, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Engineering,
                                     contentDescription = null,
                                     tint = accentColor,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
                                     text = "CYBER TECH CREW DECK",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    letterSpacing = 1.sp,
-                                    color = TextLuminous
+                                    letterSpacing = 0.5.sp,
+                                    color = textColor
                                 )
                                 Text(
                                     text = "Specialist Operatives & Coolant Units",
-                                    fontFamily = SpaceGroteskFontFamily,
+                                    fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 11.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                         }
@@ -133,9 +130,9 @@ fun Page4TechCrewScreen(
 
                     Text(
                         text = "Deploy specialized tactical abilities to suppress battery thermals, eliminate phantom parasitic drain, inject harmonic XP, and reinforce battery health shields.",
-                        fontFamily = SpaceGroteskFontFamily,
+                        fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 11.sp,
-                        color = TextMutedGreen,
+                        color = TextSlate,
                         lineHeight = 16.sp
                     )
                 }
@@ -154,6 +151,7 @@ fun Page4TechCrewScreen(
             crewMembers.forEach { member ->
                 TechCrewCard(
                     member = member,
+                    isDarkMode = isDark,
                     glow = glow,
                     onDeploy = { onTriggerAbility(member.id) }
                 )
@@ -165,15 +163,18 @@ fun Page4TechCrewScreen(
 @Composable
 fun TechCrewCard(
     member: TechCrewMember,
+    isDarkMode: Boolean,
     glow: Float,
     onDeploy: () -> Unit
 ) {
     val isCoolingDown = member.cooldownRemainingSec > 0
     val isActive = member.isActiveAbilityRunning
+    val textColor = if (isDarkMode) TextWhite else TextCharcoal
 
     LiquidGlassCard(
         modifier = Modifier.fillMaxWidth(),
         accentColor = member.primaryColor,
+        isDarkMode = isDarkMode,
         glowIntensity = if (isActive) 1.0f else glow
     ) {
         Column(modifier = Modifier.padding(18.dp)) {
@@ -185,15 +186,15 @@ fun TechCrewCard(
                 // Avatar Box
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(46.dp)
                         .clip(CircleShape)
-                        .background(member.primaryColor.copy(alpha = 0.22f))
+                        .background(member.primaryColor.copy(alpha = if (isDarkMode) 0.22f else 0.12f))
                         .border(1.5.dp, member.primaryColor, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = member.avatarLetter,
-                        fontSize = 20.sp
+                        fontSize = 22.sp
                     )
                 }
 
@@ -202,15 +203,15 @@ fun TechCrewCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = member.name,
-                        fontFamily = RajdhaniFontFamily,
+                        fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp,
-                        color = TextLuminous
+                        color = textColor
                     )
                     Text(
                         text = member.title,
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 10.sp,
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 11.sp,
                         color = member.primaryColor
                     )
                 }
@@ -220,13 +221,13 @@ fun TechCrewCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(member.primaryColor.copy(alpha = 0.25f))
+                            .background(member.primaryColor.copy(alpha = if (isDarkMode) 0.25f else 0.15f))
                             .border(1.dp, member.primaryColor, RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "ACTIVE (${member.activeSecondsRemaining}s)",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = member.primaryColor
@@ -236,27 +237,27 @@ fun TechCrewCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0x33446655))
+                            .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "COOLDOWN ${member.cooldownRemainingSec}s",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
-                            color = TextMutedGreen
+                            color = TextSlate
                         )
                     }
                 } else {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(member.primaryColor.copy(alpha = 0.18f))
+                            .background(member.primaryColor.copy(alpha = if (isDarkMode) 0.2f else 0.12f))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "READY",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = member.primaryColor
@@ -270,18 +271,18 @@ fun TechCrewCard(
             // Ability Title & Description
             Text(
                 text = "SPECIAL ABILITY: ${member.abilityName.uppercase()}",
-                fontFamily = RajdhaniFontFamily,
+                fontFamily = OutfitFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                letterSpacing = 0.8.sp,
-                color = TextLuminous
+                letterSpacing = 0.5.sp,
+                color = textColor
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = member.abilityDescription,
-                fontFamily = SpaceGroteskFontFamily,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 11.sp,
-                color = TextMutedGreen,
+                color = TextSlate,
                 lineHeight = 15.sp
             )
 
@@ -297,25 +298,25 @@ fun TechCrewCard(
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp)),
                     color = member.primaryColor,
-                    trackColor = Color(0x3310241C)
+                    trackColor = if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Action Deploy Button
+            // Action Deploy Button (Tactile)
             Button(
                 onClick = onDeploy,
                 enabled = !isCoolingDown && !isActive,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = member.primaryColor,
-                    contentColor = Color.Black,
-                    disabledContainerColor = Color(0x221B2822),
-                    disabledContentColor = Color(0x5586A396)
+                    contentColor = Color.White,
+                    disabledContainerColor = if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0),
+                    disabledContentColor = TextSlate
                 ),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(40.dp)
+                    .height(42.dp)
                     .testTag("btn_deploy_${member.id}")
             ) {
                 Icon(
@@ -325,8 +326,8 @@ fun TechCrewCard(
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (isActive) "UNIT CURRENTLY ACTIVE" else if (isCoolingDown) "RECHARGING THERMAL MATRIX..." else "DEPLOY ${member.abilityName.uppercase()}",
-                    fontFamily = RajdhaniFontFamily,
+                    text = if (isActive) "UNIT CURRENTLY ACTIVE" else if (isCoolingDown) "RECHARGING MATRIX..." else "DEPLOY ${member.abilityName.uppercase()}",
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 12.sp
                 )

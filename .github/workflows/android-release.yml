@@ -6,7 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-# Permissions required to create releases and upload build artifacts
 permissions:
   contents: write
 
@@ -33,25 +32,29 @@ jobs:
 
       - name: Setup Signing Keystore
         id: setup_keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SECRET_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          SECRET_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           KEYSTORE_FILE="${{ github.workspace }}/my-upload-key.jks"
 
           # 1. Use custom GitHub Secret if configured
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "Using KEYSTORE_BASE64 from GitHub Secrets."
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_FILE"
-            echo "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "Using KEYSTORE_BASE64 provided in GitHub Secrets."
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
+            echo "STORE_PASSWORD=${SECRET_STORE_PASSWORD:-android}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${SECRET_KEY_PASSWORD:-android}" >> $GITHUB_ENV
 
-          # 2. Otherwise use the integrated repository keystore
+          # 2. Otherwise use the integrated repository release keystore
           elif [ -f "$KEYSTORE_FILE" ]; then
             echo "Using repository release keystore (my-upload-key.jks)."
             echo "STORE_PASSWORD=android" >> $GITHUB_ENV
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV
 
-          # 3. Fallback: generate new release keystore on the fly
+          # 3. Fallback: generate fresh upload keystore automatically
           else
-            echo "Generating fresh release keystore..."
+            echo "Generating release keystore automatically..."
             keytool -genkeypair -v -keystore "$KEYSTORE_FILE" \
               -alias "upload" -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass "android" -keypass "android" \
@@ -60,7 +63,7 @@ jobs:
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 
-          # Ensure keystore is present in both root and app module directories
+          # Ensure keystore is present in root and app module directories
           cp "$KEYSTORE_FILE" "${{ github.workspace }}/app/my-upload-key.jks"
           echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
           echo "Keystore is ready at $KEYSTORE_FILE"
@@ -68,7 +71,6 @@ jobs:
       - name: Extract Version Name & Configure Tag
         id: versioning
         run: |
-          # Extract versionName from app/build.gradle.kts
           VERSION_NAME=$(grep -E 'versionName\s*=\s*' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
           if [ -z "$VERSION_NAME" ]; then
             VERSION_NAME="1.0"
@@ -76,10 +78,9 @@ jobs:
           echo "Extracted Version Name: $VERSION_NAME"
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
 
-          # Determine Tag and avoid duplicates
           TAG="v${VERSION_NAME}"
           if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
-            echo "Tag $TAG already exists on remote. Appending build run number to avoid conflict."
+            echo "Tag $TAG already exists on remote. Appending build run number."
             TAG="${TAG}-build${{ github.run_number }}"
           fi
           echo "Release Tag: $TAG"

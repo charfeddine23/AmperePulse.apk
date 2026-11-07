@@ -3,11 +3,9 @@ package com.example.ui.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -31,7 +29,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Egg
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Shield
@@ -48,7 +45,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -65,18 +61,17 @@ import com.example.data.HatchedCompanion
 import com.example.data.StreakData
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.PulsingNeonDot
-import com.example.ui.theme.ElectricMint
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 
 /**
  * PAGE 2: Streak & Egg System
  * Features battery compliance streaks, 3 protective health shields,
- * and 100% incubation egg hatching mechanics.
+ * and 100% incubation egg hatching mechanics in Light Neumorphism / Dark Slate style.
  */
 @Composable
 fun Page2StreaksAndEggScreen(
@@ -87,8 +82,10 @@ fun Page2StreaksAndEggScreen(
     onRepairShield: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
     val glow = themeConfig.glowIntensity
+    val textColor = if (isDark) TextWhite else TextCharcoal
 
     var newlyHatchedCompanion by remember { mutableStateOf<HatchedCompanion?>(null) }
     var showHatchCelebration by remember { mutableStateOf(false) }
@@ -98,10 +95,7 @@ fun Page2StreaksAndEggScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(bottom = 110.dp)
-            .graphicsLayer {
-                // 90 FPS rendering isolation
-                clip = false
-            }
+            .graphicsLayer { clip = false }
     ) {
         // Hero Streak Banner
         Box(
@@ -112,6 +106,7 @@ fun Page2StreaksAndEggScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -123,34 +118,34 @@ fun Page2StreaksAndEggScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(38.dp)
+                                    .size(42.dp)
                                     .clip(CircleShape)
-                                    .background(accentColor.copy(alpha = 0.2f))
-                                    .border(1.dp, accentColor, CircleShape),
+                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                    .border(1.2.dp, accentColor, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LocalFireDepartment,
                                     contentDescription = "Streak",
                                     tint = accentColor,
-                                    modifier = Modifier.size(22.dp)
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(
                                     text = "LITHIUM HEALTH STREAK",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 15.sp,
-                                    letterSpacing = 1.sp,
-                                    color = TextLuminous
+                                    letterSpacing = 0.5.sp,
+                                    color = textColor
                                 )
                                 Text(
                                     text = "20%-80% Charging & Thermal Compliance",
-                                    fontFamily = SpaceGroteskFontFamily,
+                                    fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 11.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                         }
@@ -159,7 +154,7 @@ fun Page2StreaksAndEggScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
                                 text = "${streakData.currentStreakDays}",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 32.sp,
                                 lineHeight = 32.sp,
@@ -167,10 +162,10 @@ fun Page2StreaksAndEggScreen(
                             )
                             Text(
                                 text = "DAYS ACTIVE",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
-                                color = TextLuminous
+                                color = textColor
                             )
                         }
                     }
@@ -182,9 +177,21 @@ fun Page2StreaksAndEggScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        StreakStatPill(label = "TODAY COMPLIANCE", value = "${(streakData.todayComplianceRate * 100).toInt()}%")
-                        StreakStatPill(label = "HEALTHY MINUTES", value = "${streakData.healthyChargeMinutesToday}m")
-                        StreakStatPill(label = "RECORD BEST", value = "${streakData.bestStreakDays} Days")
+                        StreakStatPill(
+                            label = "TODAY COMPLIANCE",
+                            value = "${(streakData.todayComplianceRate * 100).toInt()}%",
+                            isDarkMode = isDark
+                        )
+                        StreakStatPill(
+                            label = "HEALTHY CHARGE",
+                            value = "${streakData.healthyChargeMinutesToday}m",
+                            isDarkMode = isDark
+                        )
+                        StreakStatPill(
+                            label = "RECORD BEST",
+                            value = "${streakData.bestStreakDays} Days",
+                            isDarkMode = isDark
+                        )
                     }
                 }
             }
@@ -201,6 +208,7 @@ fun Page2StreaksAndEggScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = Color(0xFFFFB800),
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
@@ -219,17 +227,17 @@ fun Page2StreaksAndEggScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "BATTERY HEALTH SHIELDS",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                letterSpacing = 1.sp,
-                                color = TextLuminous
+                                letterSpacing = 0.5.sp,
+                                color = textColor
                             )
                         }
 
                         Text(
                             text = "${streakData.shieldsAvailable} / ${streakData.maxShields} READY",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
                             color = Color(0xFFFFB800)
@@ -240,9 +248,9 @@ fun Page2StreaksAndEggScreen(
 
                     Text(
                         text = "Shields automatically absorb sudden thermal spikes or accidental 0% dropouts without breaking your daily streak score.",
-                        fontFamily = SpaceGroteskFontFamily,
+                        fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 11.sp,
-                        color = TextMutedGreen,
+                        color = TextSlate,
                         lineHeight = 16.sp
                     )
 
@@ -255,16 +263,19 @@ fun Page2StreaksAndEggScreen(
                     ) {
                         for (i in 1..streakData.maxShields) {
                             val isActive = i <= streakData.shieldsAvailable
+                            val cardBg = when {
+                                isActive -> Color(0xFFFFB800).copy(alpha = if (isDark) 0.22f else 0.12f)
+                                isDark -> Color(0xFF1E293B)
+                                else -> Color(0xFFFFFFFF)
+                            }
+                            val borderCol = if (isActive) Color(0xFFFFB800) else if (isDark) Color(0x33475569) else Color(0x4DE2E8F0)
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(if (isActive) Color(0x33FFB800) else Color(0x221A201C))
-                                    .border(
-                                        1.dp,
-                                        if (isActive) Color(0xFFFFB800) else Color(0x33446655),
-                                        RoundedCornerShape(14.dp)
-                                    )
+                                    .background(cardBg)
+                                    .border(1.dp, borderCol, RoundedCornerShape(14.dp))
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -272,16 +283,16 @@ fun Page2StreaksAndEggScreen(
                                     Icon(
                                         imageVector = Icons.Default.Security,
                                         contentDescription = "Shield $i",
-                                        tint = if (isActive) Color(0xFFFFB800) else Color(0x5586A396),
+                                        tint = if (isActive) Color(0xFFFFB800) else TextSlate,
                                         modifier = Modifier.size(24.dp)
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = if (isActive) "SHIELD $i: ACTIVE" else "EXPENDED",
-                                        fontFamily = RajdhaniFontFamily,
+                                        fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
-                                        color = if (isActive) TextLuminous else TextMutedGreen
+                                        color = if (isActive) textColor else TextSlate
                                     )
                                 }
                             }
@@ -294,14 +305,14 @@ fun Page2StreaksAndEggScreen(
                             modifier = Modifier
                                 .align(Alignment.End)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0x33FFB800))
+                                .background(Color(0xFFFFB800).copy(alpha = if (isDark) 0.25f else 0.15f))
                                 .border(1.dp, Color(0xFFFFB800), RoundedCornerShape(10.dp))
                                 .clickable { onRepairShield() }
                                 .padding(horizontal = 12.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 text = "RECHARGE 1 SHIELD",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 color = Color(0xFFFFB800)
@@ -323,6 +334,7 @@ fun Page2StreaksAndEggScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(
@@ -337,15 +349,15 @@ fun Page2StreaksAndEggScreen(
                         Column {
                             Text(
                                 text = "CYBER INCUBATION CHAMBER",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
-                                letterSpacing = 1.sp,
-                                color = TextLuminous
+                                letterSpacing = 0.5.sp,
+                                color = textColor
                             )
                             Text(
                                 text = eggData.eggName,
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
                                 color = accentColor
                             )
@@ -355,10 +367,11 @@ fun Page2StreaksAndEggScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Living Incubating Egg Graphic with Floating Animation
+                    // Living Incubating Egg Graphic
                     CyberEggGraphic(
                         progress = eggData.incubationProgress,
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        isDarkMode = isDark
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -371,17 +384,17 @@ fun Page2StreaksAndEggScreen(
                     ) {
                         Text(
                             text = "INCUBATION STATUS",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = TextMutedGreen
+                            color = TextSlate
                         )
                         Text(
                             text = "$percentInt% (${eggData.currentXP} / ${eggData.xpToHatch} XP)",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = if (percentInt >= 100) Color(0xFF00FF87) else accentColor
+                            color = if (percentInt >= 100) TactileGreen else accentColor
                         )
                     }
 
@@ -393,13 +406,13 @@ fun Page2StreaksAndEggScreen(
                             .fillMaxWidth()
                             .height(8.dp)
                             .clip(RoundedCornerShape(4.dp)),
-                        color = if (percentInt >= 100) Color(0xFF00FF87) else accentColor,
-                        trackColor = Color(0x3310241C)
+                        color = if (percentInt >= 100) TactileGreen else accentColor,
+                        trackColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Hatch Action Button (or simulate boost to 100%)
+                    // Hatch Action Button
                     if (eggData.incubationProgress >= 0.99f || percentInt >= 100) {
                         Button(
                             onClick = {
@@ -408,8 +421,8 @@ fun Page2StreaksAndEggScreen(
                                 showHatchCelebration = true
                             },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF00FF87),
-                                contentColor = Color.Black
+                                containerColor = TactileGreen,
+                                contentColor = Color.White
                             ),
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier
@@ -425,7 +438,7 @@ fun Page2StreaksAndEggScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "HATCH CYBER EGG NOW (100%)",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
@@ -439,18 +452,17 @@ fun Page2StreaksAndEggScreen(
                         ) {
                             Text(
                                 text = "+5 XP/min while charging on healthy AC wall adapter.",
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 10.sp,
-                                color = TextMutedGreen,
+                                color = TextSlate,
                                 modifier = Modifier.weight(1f)
                             )
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(accentColor.copy(alpha = 0.2f))
+                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
                                     .border(1.dp, accentColor, RoundedCornerShape(10.dp))
                                     .clickable {
-                                        // Trigger Hatch simulation
                                         val comp = onHatchEgg()
                                         newlyHatchedCompanion = comp
                                         showHatchCelebration = true
@@ -459,7 +471,7 @@ fun Page2StreaksAndEggScreen(
                             ) {
                                 Text(
                                     text = "FAST-FORWARD HATCH",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
                                     color = accentColor
@@ -481,7 +493,8 @@ fun Page2StreaksAndEggScreen(
                 ) {
                     LiquidGlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        accentColor = Color(0xFF00FF87),
+                        accentColor = TactileGreen,
+                        isDarkMode = isDark,
                         glowIntensity = 1.0f
                     ) {
                         Column(
@@ -490,37 +503,34 @@ fun Page2StreaksAndEggScreen(
                         ) {
                             Text(
                                 text = "✦ NEW COMPANION HATCHED! ✦",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 16.sp,
-                                letterSpacing = 1.sp,
-                                color = Color(0xFF00FF87)
+                                letterSpacing = 0.5.sp,
+                                color = TactileGreen
                             )
                             Spacer(modifier = Modifier.height(10.dp))
                             Box(
                                 modifier = Modifier
                                     .size(60.dp)
                                     .clip(CircleShape)
-                                    .background(companion.color.copy(alpha = 0.25f))
+                                    .background(companion.color.copy(alpha = if (isDark) 0.25f else 0.15f))
                                     .border(2.dp, companion.color, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "👾",
-                                    fontSize = 28.sp
-                                )
+                                Text(text = "👾", fontSize = 28.sp)
                             }
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 text = companion.name,
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 18.sp,
-                                color = TextLuminous
+                                color = textColor
                             )
                             Text(
                                 text = "RARITY: ${companion.rarity.uppercase()}",
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
                                 color = companion.color
@@ -528,24 +538,24 @@ fun Page2StreaksAndEggScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = "ACTIVE PERK: ${companion.perk}",
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
-                                color = TextMutedGreen
+                                color = TextSlate
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF00FF87))
+                                    .background(TactileGreen)
                                     .clickable { showHatchCelebration = false }
-                                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                                    .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
                                 Text(
                                     text = "COLLECT TO CREW",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Color.Black
+                                    color = Color.White
                                 )
                             }
                         }
@@ -565,16 +575,17 @@ fun Page2StreaksAndEggScreen(
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
                 accentColor = accentColor,
+                isDarkMode = isDark,
                 glowIntensity = glow
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
                         text = "HATCHED CYBER COMPANIONS (${eggData.hatchedList.size})",
-                        fontFamily = RajdhaniFontFamily,
+                        fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        letterSpacing = 1.sp,
-                        color = TextLuminous
+                        letterSpacing = 0.5.sp,
+                        color = textColor
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
@@ -587,9 +598,9 @@ fun Page2StreaksAndEggScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(32.dp)
+                                    .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(comp.color.copy(alpha = 0.2f))
+                                    .background(comp.color.copy(alpha = if (isDark) 0.22f else 0.12f))
                                     .border(1.dp, comp.color, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -599,27 +610,27 @@ fun Page2StreaksAndEggScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = comp.name,
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
-                                    color = TextLuminous
+                                    color = textColor
                                 )
                                 Text(
                                     text = comp.perk,
-                                    fontFamily = SpaceGroteskFontFamily,
+                                    fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 10.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(comp.color.copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(comp.color.copy(alpha = if (isDark) 0.2f else 0.12f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
                             ) {
                                 Text(
                                     text = comp.rarity,
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 10.sp,
                                     color = comp.color
@@ -634,31 +645,36 @@ fun Page2StreaksAndEggScreen(
 }
 
 @Composable
-private fun StreakStatPill(label: String, value: String) {
+private fun StreakStatPill(
+    label: String,
+    value: String,
+    isDarkMode: Boolean
+) {
     Column {
         Text(
             text = label,
-            fontFamily = SpaceGroteskFontFamily,
+            fontFamily = PlusJakartaSansFontFamily,
             fontSize = 9.sp,
-            color = TextMutedGreen
+            color = TextSlate
         )
         Text(
             text = value,
-            fontFamily = RajdhaniFontFamily,
+            fontFamily = OutfitFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 13.sp,
-            color = TextLuminous
+            color = if (isDarkMode) TextWhite else TextCharcoal
         )
     }
 }
 
 /**
- * 90 FPS Floating Cyber Egg with neon fluid plasma shell
+ * 90 FPS Floating Cyber Egg with Tactile Soft Glass Shell
  */
 @Composable
 private fun CyberEggGraphic(
     progress: Float,
-    accentColor: Color
+    accentColor: Color,
+    isDarkMode: Boolean
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "eggFloat")
     val floatOffset by infiniteTransition.animateFloat(
@@ -692,35 +708,34 @@ private fun CyberEggGraphic(
             val w = size.width
             val h = size.height
 
-            // Radiant Egg shape path
             val eggPath = Path().apply {
                 moveTo(w * 0.5f, h * 0.05f)
-                // Right side curvature
                 cubicTo(w * 0.95f, h * 0.15f, w * 0.95f, h * 0.85f, w * 0.5f, h * 0.95f)
-                // Left side curvature
                 cubicTo(w * 0.05f, h * 0.85f, w * 0.05f, h * 0.15f, w * 0.5f, h * 0.05f)
                 close()
             }
 
-            // Outer glowing aura
+            // Neumorphic Dual Drop Shadows for Egg
+            val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
             drawPath(
                 path = eggPath,
-                color = accentColor.copy(alpha = 0.25f * glowPulse),
-                style = Stroke(width = 12.dp.toPx())
+                color = shadowColor,
+                style = Stroke(width = 6.dp.toPx())
             )
 
-            // Obsidian Glass Shell fill
+            // Shell Fill
             drawPath(
                 path = eggPath,
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xD910241C),
-                        Color(0xF008100C)
-                    )
+                    colors = if (isDarkMode) {
+                        listOf(Color(0xFF243348), Color(0xFF1A2433))
+                    } else {
+                        listOf(Color(0xFFFFFFFF), Color(0xFFF7FAFD), Color(0xFFEFF3F8))
+                    }
                 )
             )
 
-            // Inner Plasma Liquid Fluid depending on progress
+            // Inner Fluid Wave Fill
             val fluidFillY = h * (1f - progress.coerceIn(0.1f, 1f))
             drawContext.canvas.save()
             drawContext.canvas.clipPath(eggPath)
@@ -728,8 +743,8 @@ private fun CyberEggGraphic(
             drawRect(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        accentColor.copy(alpha = 0.6f * glowPulse),
-                        accentColor.copy(alpha = 0.2f),
+                        accentColor.copy(alpha = if (isDarkMode) 0.55f * glowPulse else 0.35f * glowPulse),
+                        accentColor.copy(alpha = if (isDarkMode) 0.2f else 0.1f),
                         Color.Transparent
                     ),
                     startY = fluidFillY,
@@ -740,12 +755,12 @@ private fun CyberEggGraphic(
             )
             drawContext.canvas.restore()
 
-            // Razor-sharp luminous shell border
+            // Outer Shell Border
             drawPath(
                 path = eggPath,
                 brush = Brush.verticalGradient(
                     listOf(
-                        Color.White,
+                        if (isDarkMode) Color.White.copy(alpha = 0.5f) else Color.White,
                         accentColor,
                         accentColor.copy(alpha = 0.5f)
                     )
@@ -764,10 +779,10 @@ private fun CyberEggGraphic(
             )
             Text(
                 text = "${(progress * 100).toInt()}%",
-                fontFamily = RajdhaniFontFamily,
+                fontFamily = OutfitFontFamily,
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
-                color = TextLuminous
+                color = if (isDarkMode) TextWhite else TextCharcoal
             )
         }
     }

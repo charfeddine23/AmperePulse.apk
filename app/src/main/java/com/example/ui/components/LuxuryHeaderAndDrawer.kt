@@ -33,9 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Thermostat
-import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -49,7 +48,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
@@ -58,17 +56,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.GlassThemeConfig
 import com.example.data.TemperatureUnit
-import com.example.ui.theme.CyberViolet
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SolarAmber
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileCoralRed
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TactileViolet
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 
 /**
- * Luxury 3-line frosted glass hamburger top bar with 90 FPS status HUD
+ * Top Header with Luxury 3-line frosted glass hamburger menu,
+ * Quick Dark Mode / Light Mode toggle, and 90 FPS status HUD.
  */
 @Composable
 fun LuxuryTopBar(
@@ -77,8 +77,10 @@ fun LuxuryTopBar(
     isMenuOpen: Boolean,
     onMenuToggle: () -> Unit,
     themeConfig: GlassThemeConfig,
+    onToggleDarkMode: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
 
     Row(
@@ -86,23 +88,20 @@ fun LuxuryTopBar(
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars)
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .graphicsLayer {
-                // 90 FPS rendering isolation
-                clip = false
-            },
+            .graphicsLayer { clip = false },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // App Title & Status
+        // App Title & Status Subtitle
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = title,
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
-                    letterSpacing = 1.2.sp,
-                    color = TextLuminous
+                    letterSpacing = (-0.3).sp,
+                    color = if (isDark) TextWhite else TextCharcoal
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
@@ -112,13 +111,13 @@ fun LuxuryTopBar(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0x3300FF87))
-                            .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .background(if (isDark) Color(0x33448AFF) else Color(0x1F2962FF))
+                            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
                         Text(
                             text = "90 FPS",
-                            fontFamily = RajdhaniFontFamily,
+                            fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
                             fontSize = 10.sp,
                             color = accentColor
@@ -128,20 +127,47 @@ fun LuxuryTopBar(
             }
             Text(
                 text = subtitle,
-                fontFamily = SpaceGroteskFontFamily,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontWeight = FontWeight.Normal,
                 fontSize = 11.sp,
-                color = TextMutedGreen
+                color = TextSlate
             )
         }
 
-        // Luxury 3-Line Animated Hamburger Button
-        LuxuryHamburgerButton(
-            isOpen = isMenuOpen,
-            onClick = onMenuToggle,
-            accentColor = accentColor,
-            glowIntensity = themeConfig.glowIntensity
-        )
+        // Actions: Quick Dark/Light Toggle + Luxury 3-Line Button
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Dark Mode Quick Toggle Button
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
+                    .border(
+                        1.dp,
+                        if (isDark) Color(0x33475569) else Color(0x4DE2E8F0),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onToggleDarkMode() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                    contentDescription = "Toggle Dark Mode",
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Luxury 3-Line Animated Hamburger Button
+            LuxuryHamburgerButton(
+                isOpen = isMenuOpen,
+                onClick = onMenuToggle,
+                accentColor = accentColor,
+                isDarkMode = isDark
+            )
+        }
     }
 }
 
@@ -153,7 +179,7 @@ fun LuxuryHamburgerButton(
     isOpen: Boolean,
     onClick: () -> Unit,
     accentColor: Color,
-    glowIntensity: Float,
+    isDarkMode: Boolean,
     modifier: Modifier = Modifier
 ) {
     val line1Rotate by animateFloatAsState(
@@ -182,27 +208,26 @@ fun LuxuryHamburgerButton(
         label = "line3Y"
     )
 
+    val buttonBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x66E2E8F0)
+    val lineColor = if (isDarkMode) TextWhite else TextCharcoal
+
     Box(
         modifier = modifier
             .testTag("luxury_hamburger_button")
-            .size(44.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(Color(0xCC111816))
-            .border(
-                1.dp,
-                accentColor.copy(alpha = 0.5f * glowIntensity),
-                RoundedCornerShape(14.dp)
-            )
+            .size(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(buttonBg)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
-            .padding(10.dp),
+            .padding(9.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(22.dp),
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Line 1
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,20 +237,16 @@ fun LuxuryHamburgerButton(
                         translationY = line1TranslateY * density
                     }
                     .clip(CircleShape)
-                    .background(accentColor)
+                    .background(if (isOpen) accentColor else lineColor)
             )
-            // Line 2
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.75f)
                     .height(2.2.dp)
-                    .graphicsLayer {
-                        alpha = line2Alpha
-                    }
+                    .graphicsLayer { alpha = line2Alpha }
                     .clip(CircleShape)
-                    .background(accentColor)
+                    .background(lineColor)
             )
-            // Line 3
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -235,14 +256,14 @@ fun LuxuryHamburgerButton(
                         translationY = line3TranslateY * density
                     }
                     .clip(CircleShape)
-                    .background(accentColor)
+                    .background(if (isOpen) accentColor else lineColor)
             )
         }
     }
 }
 
 /**
- * Slide-over frosted glass luxury settings drawer
+ * Slide-over frosted glass settings drawer with Neumorphic styling
  */
 @Composable
 fun LuxurySettingsDrawer(
@@ -252,13 +273,15 @@ fun LuxurySettingsDrawer(
     onConfigChange: (GlassThemeConfig) -> Unit
 ) {
     if (isOpen) {
-        BackHandler {
-            onClose()
-        }
+        BackHandler { onClose() }
     }
 
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
-    val glow = themeConfig.glowIntensity
+
+    val drawerBg = if (isDark) Color(0xF71E293B) else Color(0xFBF8FAFD)
+    val cardBg = if (isDark) Color(0xFF0F172A) else Color(0xFFFFFFFF)
+    val textColor = if (isDark) TextWhite else TextCharcoal
 
     AnimatedVisibility(
         visible = isOpen,
@@ -274,34 +297,20 @@ fun LuxurySettingsDrawer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0x99000000))
+                .background(Color(0x55000000))
                 .clickable { onClose() },
             contentAlignment = Alignment.CenterEnd
         ) {
-            // Drawer Panel
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(0.85f)
-                    .clickable(enabled = false) {} // prevent click-through
-                    .drawBehind {
-                        drawRoundRect(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = 0.25f * glow),
-                                    Color.Transparent
-                                ),
-                                center = Offset(0f, size.height * 0.3f),
-                                radius = size.width
-                            ),
-                            size = size
-                        )
-                    }
+                    .clickable(enabled = false) {}
                     .clip(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
-                    .background(Color(0xF50D1412))
+                    .background(drawerBg)
                     .border(
-                        1.2.dp,
-                        accentColor.copy(alpha = 0.5f * glow),
+                        1.dp,
+                        if (isDark) Color(0x33475569) else Color(0x4DE2E8F0),
                         RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp)
                     )
                     .windowInsetsPadding(WindowInsets.statusBars)
@@ -320,89 +329,82 @@ fun LuxurySettingsDrawer(
                     ) {
                         Column {
                             Text(
-                                text = "CORE SETTINGS",
-                                fontFamily = RajdhaniFontFamily,
+                                text = "APPEARANCE & SYSTEM",
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                letterSpacing = 1.sp,
-                                color = TextLuminous
+                                fontSize = 18.sp,
+                                letterSpacing = (-0.2).sp,
+                                color = textColor
                             )
                             Text(
-                                text = "90Hz ENGINE & M5 SYSTEM",
-                                fontFamily = SpaceGroteskFontFamily,
+                                text = "Neumorphic & Soft Glass Engine",
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
-                                color = TextMutedGreen
+                                color = TextSlate
                             )
                         }
                         Box(
                             modifier = Modifier
-                                .size(36.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x3314221C))
+                                .background(if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))
                                 .clickable { onClose() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = accentColor,
-                                modifier = Modifier.size(18.dp)
+                                tint = textColor,
+                                modifier = Modifier.size(16.dp)
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // 90Hz High-Refresh Acceleration Toggle
+                    // Dark Mode Toggle Row
+                    DrawerToggleRow(
+                        title = "Dark Slate Mode",
+                        subtitle = "Switch between Light Neumorphism and Dark Slate glass",
+                        checked = themeConfig.isDarkMode,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(isDarkMode = it)) },
+                        accentColor = accentColor,
+                        textColor = textColor
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // 90Hz Motion Acceleration Toggle
                     DrawerToggleRow(
                         title = "90Hz / 90 FPS Motion Lock",
                         subtitle = "Hardware-accelerated graphicsLayer render pipeline",
                         checked = themeConfig.target90FpsMode,
                         onCheckedChange = { onConfigChange(themeConfig.copy(target90FpsMode = it)) },
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        textColor = textColor
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 90 FPS HUD overlay toggle
                     DrawerToggleRow(
                         title = "Live 90 FPS Telemetry HUD",
-                        subtitle = "Display frame rate performance chip in top bar",
+                        subtitle = "Show real-time frame rate badge in top bar",
                         checked = themeConfig.showFpsOverlay,
                         onCheckedChange = { onConfigChange(themeConfig.copy(showFpsOverlay = it)) },
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        textColor = textColor
                     )
 
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // Neon Glow Slider
+                    // Accent Palette Picker
                     Text(
-                        text = "NEON GLOW INTENSITY: ${(glow * 100).toInt()}%",
-                        fontFamily = RajdhaniFontFamily,
+                        text = "ACCENT COLOR PALETTE",
+                        fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = TextLuminous
-                    )
-                    Slider(
-                        value = glow,
-                        onValueChange = { onConfigChange(themeConfig.copy(glowIntensity = it)) },
-                        valueRange = 0.4f..1.0f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = accentColor,
-                            activeTrackColor = accentColor,
-                            inactiveTrackColor = Color(0x33446655)
-                        )
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // Theme Color Switcher
-                    Text(
-                        text = "CHROMATIC NEON ACCENT",
-                        fontFamily = RajdhaniFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = TextLuminous
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
+                        color = textColor
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -410,20 +412,20 @@ fun LuxurySettingsDrawer(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         listOf(
-                            Triple("Green", NeonPhosphorusGreen, 0),
-                            Triple("Cyan", NeonCyan, 1),
-                            Triple("Violet", CyberViolet, 2),
-                            Triple("Amber", SolarAmber, 3)
+                            Triple("Blue", TactileRoyalBlue, 0),
+                            Triple("Green", TactileGreen, 1),
+                            Triple("Red", TactileCoralRed, 2),
+                            Triple("Violet", TactileViolet, 3)
                         ).forEach { (name, color, idx) ->
                             val isSelected = themeConfig.accentColorIndex == idx
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) color.copy(alpha = 0.25f) else Color(0x33101E18))
+                                    .background(if (isSelected) color.copy(alpha = 0.2f) else cardBg)
                                     .border(
                                         1.dp,
-                                        if (isSelected) color else Color(0x33446655),
+                                        if (isSelected) color else Color(0x3394A3B8),
                                         RoundedCornerShape(10.dp)
                                     )
                                     .clickable { onConfigChange(themeConfig.copy(accentColorIndex = idx)) }
@@ -432,10 +434,10 @@ fun LuxurySettingsDrawer(
                             ) {
                                 Text(
                                     text = name,
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = if (isSelected) TextLuminous else TextMutedGreen
+                                    color = if (isSelected) color else TextSlate
                                 )
                             }
                         }
@@ -443,7 +445,7 @@ fun LuxurySettingsDrawer(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Temperature Units Toggle
+                    // Temperature Scale Switcher
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -452,24 +454,23 @@ fun LuxurySettingsDrawer(
                         Column {
                             Text(
                                 text = "Temperature Unit",
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 13.sp,
-                                color = TextLuminous
+                                color = textColor
                             )
                             Text(
-                                text = "Display scale",
-                                fontFamily = SpaceGroteskFontFamily,
+                                text = "Thermal readout scale",
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
-                                color = TextMutedGreen
+                                color = TextSlate
                             )
                         }
 
                         Row(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0x3312221A))
-                                .border(1.dp, Color(0x3300FF87), RoundedCornerShape(8.dp))
+                                .background(if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
                                 .padding(2.dp)
                         ) {
                             Box(
@@ -483,9 +484,9 @@ fun LuxurySettingsDrawer(
                                     .clickable {
                                         onConfigChange(themeConfig.copy(temperatureUnit = TemperatureUnit.CELSIUS))
                                     }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Text("°C", fontFamily = RajdhaniFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextLuminous)
+                                Text("°C", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (themeConfig.temperatureUnit == TemperatureUnit.CELSIUS) accentColor else TextSlate)
                             }
                             Box(
                                 modifier = Modifier
@@ -498,9 +499,9 @@ fun LuxurySettingsDrawer(
                                     .clickable {
                                         onConfigChange(themeConfig.copy(temperatureUnit = TemperatureUnit.FAHRENHEIT))
                                     }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
-                                Text("°F", fontFamily = RajdhaniFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = TextLuminous)
+                                Text("°F", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (themeConfig.temperatureUnit == TemperatureUnit.FAHRENHEIT) accentColor else TextSlate)
                             }
                         }
                     }
@@ -513,27 +514,30 @@ fun LuxurySettingsDrawer(
                         subtitle = "Chime when cell reaches 80% to protect lithium matrix",
                         checked = themeConfig.alertOn80Percent,
                         onCheckedChange = { onConfigChange(themeConfig.copy(alertOn80Percent = it)) },
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        textColor = textColor
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     DrawerToggleRow(
-                        title = "Thermal Overheat Alarm (>42°C)",
-                        subtitle = "Instant alarm when cell thermistor spikes",
+                        title = "Thermal Warning (>42°C)",
+                        subtitle = "Instant alert when cell thermistor spikes",
                         checked = themeConfig.alertOnHighTemp,
                         onCheckedChange = { onConfigChange(themeConfig.copy(alertOnHighTemp = it)) },
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        textColor = textColor
                     )
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     DrawerToggleRow(
                         title = "Haptic Pulse Feedback",
-                        subtitle = "Tactile feedback on charge plug and triggers",
+                        subtitle = "Tactile clicks on charge plug and button taps",
                         checked = themeConfig.hapticFeedbackEnabled,
                         onCheckedChange = { onConfigChange(themeConfig.copy(hapticFeedbackEnabled = it)) },
-                        accentColor = accentColor
+                        accentColor = accentColor,
+                        textColor = textColor
                     )
 
                     Spacer(modifier = Modifier.height(30.dp))
@@ -549,7 +553,8 @@ private fun DrawerToggleRow(
     subtitle: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    accentColor: Color
+    accentColor: Color,
+    textColor: Color
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -559,16 +564,16 @@ private fun DrawerToggleRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontFamily = SpaceGroteskFontFamily,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
-                color = TextLuminous
+                color = textColor
             )
             Text(
                 text = subtitle,
-                fontFamily = SpaceGroteskFontFamily,
+                fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 10.sp,
-                color = TextMutedGreen,
+                color = TextSlate,
                 lineHeight = 14.sp
             )
         }
@@ -577,10 +582,10 @@ private fun DrawerToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.Black,
+                checkedThumbColor = Color.White,
                 checkedTrackColor = accentColor,
-                uncheckedThumbColor = TextMutedGreen,
-                uncheckedTrackColor = Color(0x33446655)
+                uncheckedThumbColor = TextSlate,
+                uncheckedTrackColor = Color(0x3394A3B8)
             )
         )
     }

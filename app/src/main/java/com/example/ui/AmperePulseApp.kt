@@ -12,12 +12,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,8 +24,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.unit.IntOffset
-import com.example.data.LivingBatteryState
 import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.LuxurySettingsDrawer
 import com.example.ui.components.LuxuryTopBar
@@ -40,7 +34,8 @@ import com.example.ui.screens.Page3PrizeRoadScreen
 import com.example.ui.screens.Page4TechCrewScreen
 import com.example.ui.screens.Page5MySpaceScreen
 import com.example.ui.theme.MyApplicationTheme
-import com.example.ui.theme.ObsidianOled
+import com.example.ui.theme.NeumorphBgDark
+import com.example.ui.theme.NeumorphBgLight
 
 @Composable
 fun AmperePulseApp(viewModel: AmperePulseViewModel) {
@@ -60,6 +55,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val themeConfig by viewModel.themeConfig.collectAsState()
     val isSettingsOpen by viewModel.isSettingsMenuOpen.collectAsState()
 
+    val isDark = themeConfig.isDarkMode
+
     // Handle back button: first close settings drawer, then return to BATTERY page
     BackHandler(enabled = isSettingsOpen) {
         viewModel.toggleSettingsMenu(false)
@@ -77,38 +74,37 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
         else -> themeConfig.accentColor
     }
 
-    MyApplicationTheme(accentColor = activeAccent) {
+    MyApplicationTheme(
+        isDarkMode = isDark,
+        accentColor = activeAccent
+    ) {
+        val rootBg = if (isDark) NeumorphBgDark else NeumorphBgLight
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(ObsidianOled)
+                .background(rootBg)
                 // 90 FPS Hardware Render Pipeline
-                .graphicsLayer {
-                    clip = false
-                }
+                .graphicsLayer { clip = false }
                 .drawBehind {
-                    // Luminous ambient aura
+                    // Subtle ambient aura tint
                     val auraColor = activeAccent
                     drawCircle(
                         brush = Brush.radialGradient(
-                            colors = listOf(
-                                auraColor.copy(alpha = 0.09f * themeConfig.glowIntensity),
-                                auraColor.copy(alpha = 0.02f),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.5f, size.height * 0.22f),
+                            colors = if (isDark) {
+                                listOf(
+                                    auraColor.copy(alpha = 0.08f * themeConfig.glowIntensity),
+                                    auraColor.copy(alpha = 0.02f),
+                                    Color.Transparent
+                                )
+                            } else {
+                                listOf(
+                                    auraColor.copy(alpha = 0.05f * themeConfig.glowIntensity),
+                                    Color.Transparent
+                                )
+                            },
+                            center = Offset(size.width * 0.5f, size.height * 0.16f),
                             radius = size.width * 0.85f
-                        )
-                    )
-                    // Secondary subtle cyan aura at bottom right
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                Color(0x1200E5FF),
-                                Color.Transparent
-                            ),
-                            center = Offset(size.width * 0.85f, size.height * 0.8f),
-                            radius = size.width * 0.6f
                         )
                     )
                 }
@@ -116,7 +112,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Luxury 3-Line Top Settings Header Bar
+                // Luxury 3-Line Top Settings Header Bar with Dark Mode Toggle
                 LuxuryTopBar(
                     title = "AMPERE PULSE",
                     subtitle = when (selectedTab) {
@@ -128,7 +124,10 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     },
                     isMenuOpen = isSettingsOpen,
                     onMenuToggle = { viewModel.toggleSettingsMenu(!isSettingsOpen) },
-                    themeConfig = themeConfig
+                    themeConfig = themeConfig,
+                    onToggleDarkMode = {
+                        viewModel.updateThemeConfig(themeConfig.copy(isDarkMode = !themeConfig.isDarkMode))
+                    }
                 )
 
                 // 5-Page Content with High-Performance Spring Transitions
@@ -205,7 +204,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 selectedTab = selectedTab,
                 onTabSelected = { viewModel.selectTab(it) },
                 accentColor = activeAccent,
-                glowIntensity = themeConfig.glowIntensity,
+                isDarkMode = isDark,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
 

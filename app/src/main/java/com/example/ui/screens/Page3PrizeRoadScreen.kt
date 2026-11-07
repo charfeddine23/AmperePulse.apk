@@ -19,14 +19,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.WorkspacePremium
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
@@ -37,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,12 +42,13 @@ import com.example.data.PrizeNode
 import com.example.data.PrizeRoadData
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.PulsingNeonDot
-import com.example.ui.theme.NeonCyan
-import com.example.ui.theme.NeonPhosphorusGreen
-import com.example.ui.theme.RajdhaniFontFamily
-import com.example.ui.theme.SpaceGroteskFontFamily
-import com.example.ui.theme.TextLuminous
-import com.example.ui.theme.TextMutedGreen
+import com.example.ui.theme.OutfitFontFamily
+import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileGreen
+import com.example.ui.theme.TactileRoyalBlue
+import com.example.ui.theme.TextCharcoal
+import com.example.ui.theme.TextSlate
+import com.example.ui.theme.TextWhite
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -59,6 +56,7 @@ import java.util.Locale
  * PAGE 3: Prize Road
  * 1,000 Levels based on cumulative mAh up to 10,000,000 mAh.
  * Milestones every 5 levels.
+ * Styled in Light Neumorphism with dual shadows & Dark Slate mode.
  */
 @Composable
 fun Page3PrizeRoadScreen(
@@ -67,12 +65,12 @@ fun Page3PrizeRoadScreen(
     onClaimMilestone: (Int) -> Unit,
     onAddSimulatedMah: (Long) -> Unit
 ) {
+    val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
     val glow = themeConfig.glowIntensity
     val numberFormat = remember { NumberFormat.getNumberInstance(Locale.US) }
+    val textColor = if (isDark) TextWhite else TextCharcoal
 
-    // Generate milestone nodes every 5 levels up to Level 1,000
-    // Center view around current level
     val currentLvl = prizeRoadData.currentLevel
     val startLevel = ((currentLvl - 25) / 5 * 5).coerceAtLeast(5)
     val endLevel = (startLevel + 60).coerceAtMost(1000)
@@ -107,10 +105,7 @@ fun Page3PrizeRoadScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(bottom = 110.dp)
-            .graphicsLayer {
-                // 90 FPS rendering isolation
-                clip = false
-            }
+            .graphicsLayer { clip = false }
     ) {
         // Hero Level & Cumulative mAh Banner
         item {
@@ -122,6 +117,7 @@ fun Page3PrizeRoadScreen(
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
                     accentColor = accentColor,
+                    isDarkMode = isDark,
                     glowIntensity = glow
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
@@ -133,32 +129,32 @@ fun Page3PrizeRoadScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(38.dp)
+                                        .size(42.dp)
                                         .clip(CircleShape)
-                                        .background(accentColor.copy(alpha = 0.2f))
-                                        .border(1.dp, accentColor, CircleShape),
+                                        .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                        .border(1.2.dp, accentColor, CircleShape),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.MilitaryTech,
                                         contentDescription = null,
                                         tint = accentColor,
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
                                         text = "1,000-LEVEL PRIZE ROAD",
-                                        fontFamily = RajdhaniFontFamily,
+                                        fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp,
-                                        letterSpacing = 1.sp,
-                                        color = TextLuminous
+                                        letterSpacing = 0.5.sp,
+                                        color = textColor
                                     )
                                     Text(
                                         text = "Rank: ${prizeRoadData.activeTitle}",
-                                        fontFamily = SpaceGroteskFontFamily,
+                                        fontFamily = PlusJakartaSansFontFamily,
                                         fontSize = 11.sp,
                                         color = accentColor
                                     )
@@ -168,16 +164,17 @@ fun Page3PrizeRoadScreen(
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     text = "LVL ${prizeRoadData.currentLevel}",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 24.sp,
-                                    color = TextLuminous
+                                    color = textColor
                                 )
                                 Text(
                                     text = "OF 1,000 LEVELS",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 9.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                         }
@@ -191,14 +188,14 @@ fun Page3PrizeRoadScreen(
                         ) {
                             Text(
                                 text = "CUMULATIVE CHARGE PROCESSED",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
-                                color = TextMutedGreen
+                                color = TextSlate
                             )
                             Text(
                                 text = "${numberFormat.format(prizeRoadData.cumulativeMah)} / 10,000,000 mAh",
-                                fontFamily = RajdhaniFontFamily,
+                                fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
                                 color = accentColor
@@ -215,7 +212,7 @@ fun Page3PrizeRoadScreen(
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp)),
                             color = accentColor,
-                            trackColor = Color(0x3310241C)
+                            trackColor = if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
                         )
 
                         Spacer(modifier = Modifier.height(12.dp))
@@ -228,15 +225,15 @@ fun Page3PrizeRoadScreen(
                         ) {
                             Text(
                                 text = "1 Level = 10,000 mAh | Milestones every 5 lvls",
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 10.sp,
-                                color = TextMutedGreen
+                                color = TextSlate
                             )
 
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(accentColor.copy(alpha = 0.2f))
+                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
                                     .border(1.dp, accentColor, RoundedCornerShape(10.dp))
                                     .clickable { onAddSimulatedMah(50_000L) }
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
@@ -251,7 +248,7 @@ fun Page3PrizeRoadScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "+50k mAh BOOST",
-                                        fontFamily = RajdhaniFontFamily,
+                                        fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
                                         color = accentColor
@@ -276,11 +273,11 @@ fun Page3PrizeRoadScreen(
             ) {
                 Text(
                     text = "5-LEVEL MILESTONE REWARDS",
-                    fontFamily = RajdhaniFontFamily,
+                    fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    letterSpacing = 1.sp,
-                    color = TextLuminous
+                    letterSpacing = 0.5.sp,
+                    color = textColor
                 )
                 PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
             }
@@ -300,7 +297,8 @@ fun Page3PrizeRoadScreen(
             ) {
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    accentColor = if (isUnlocked && !isClaimed) Color(0xFF00FF87) else if (isCurrentTarget) NeonCyan else Color(0x66446655),
+                    accentColor = if (isUnlocked && !isClaimed) TactileGreen else if (isCurrentTarget) accentColor else Color(0x6694A3B8),
+                    isDarkMode = isDark,
                     glowIntensity = if (isUnlocked && !isClaimed) 1.0f else 0.7f
                 ) {
                     Row(
@@ -316,17 +314,19 @@ fun Page3PrizeRoadScreen(
                                 .clip(CircleShape)
                                 .background(
                                     when {
-                                        isClaimed -> Color(0x3300FF87)
-                                        isUnlocked -> Color(0x5500FF87)
-                                        else -> Color(0x221A221E)
+                                        isClaimed -> TactileGreen.copy(alpha = if (isDark) 0.25f else 0.15f)
+                                        isUnlocked -> TactileGreen.copy(alpha = if (isDark) 0.35f else 0.2f)
+                                        isDark -> Color(0xFF1E293B)
+                                        else -> Color(0xFFF1F5F9)
                                     }
                                 )
                                 .border(
                                     width = 1.5.dp,
                                     color = when {
-                                        isClaimed -> Color(0xFF00FF87)
-                                        isUnlocked -> Color(0xFF00FF87)
-                                        else -> Color(0x4486A396)
+                                        isClaimed -> TactileGreen
+                                        isUnlocked -> TactileGreen
+                                        isDark -> Color(0x33475569)
+                                        else -> Color(0x4DE2E8F0)
                                     },
                                     shape = CircleShape
                                 ),
@@ -336,21 +336,21 @@ fun Page3PrizeRoadScreen(
                                 Icon(
                                     imageVector = Icons.Default.Check,
                                     contentDescription = "Claimed",
-                                    tint = Color(0xFF00FF87),
+                                    tint = TactileGreen,
                                     modifier = Modifier.size(20.dp)
                                 )
                             } else if (!isUnlocked) {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = "Locked",
-                                    tint = TextMutedGreen,
+                                    tint = TextSlate,
                                     modifier = Modifier.size(16.dp)
                                 )
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.WorkspacePremium,
                                     contentDescription = "Ready",
-                                    tint = Color(0xFF00FF87),
+                                    tint = TactileGreen,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -366,24 +366,24 @@ fun Page3PrizeRoadScreen(
                             ) {
                                 Text(
                                     text = "LEVEL ${node.level} MILESTONE",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 14.sp,
-                                    color = if (isUnlocked) TextLuminous else TextMutedGreen
+                                    color = if (isUnlocked) textColor else TextSlate
                                 )
                                 Text(
                                     text = "${numberFormat.format(node.requiredCumulativeMah)} mAh",
-                                    fontFamily = SpaceGroteskFontFamily,
+                                    fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 10.sp,
-                                    color = if (isUnlocked) accentColor else TextMutedGreen
+                                    color = if (isUnlocked) accentColor else TextSlate
                                 )
                             }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = node.rewardName,
-                                fontFamily = SpaceGroteskFontFamily,
+                                fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
-                                color = if (isUnlocked && !isClaimed) Color(0xFF00FF87) else TextMutedGreen,
+                                color = if (isUnlocked && !isClaimed) TactileGreen else TextSlate,
                                 lineHeight = 15.sp
                             )
                         }
@@ -395,36 +395,36 @@ fun Page3PrizeRoadScreen(
                             isClaimed -> {
                                 Text(
                                     text = "CLAIMED",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = Color(0xFF00FF87)
+                                    color = TactileGreen
                                 )
                             }
                             isUnlocked -> {
                                 Box(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(Color(0xFF00FF87))
+                                        .background(TactileGreen)
                                         .clickable { onClaimMilestone(node.level) }
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         text = "CLAIM",
-                                        fontFamily = RajdhaniFontFamily,
+                                        fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
-                                        color = Color.Black
+                                        color = Color.White
                                     )
                                 }
                             }
                             else -> {
                                 Text(
                                     text = "LOCKED",
-                                    fontFamily = RajdhaniFontFamily,
+                                    fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
-                                    color = TextMutedGreen
+                                    color = TextSlate
                                 )
                             }
                         }
