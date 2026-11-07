@@ -1,0 +1,88 @@
+name: Android Release Build & Publish
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Permissions required to create releases and upload build artifacts
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Publish Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x ./gradlew
+
+      - name: Decode Keystore
+        id: decode_keystore
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "::error::KEYSTORE_BASE64 secret is not set!"
+            exit 1
+          fi
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/my-upload-key.jks"
+          echo "Keystore successfully decoded to ${{ github.workspace }}/my-upload-key.jks"
+
+      - name: Extract Version Name & Configure Tag
+        id: versioning
+        run: |
+          # Extract versionName from app/build.gradle.kts
+          VERSION_NAME=$(grep -E 'versionName\s*=\s*' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ -z "$VERSION_NAME" ]; then
+            VERSION_NAME="1.0"
+          fi
+          echo "Extracted Version Name: $VERSION_NAME"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+
+          # Determine Tag and avoid duplicates
+          TAG="v${VERSION_NAME}"
+          if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
+            echo "Tag $TAG already exists on remote. Appending build run number to avoid conflict."
+            TAG="${TAG}-build${{ github.run_number }}"
+          fi
+          echo "Release Tag: $TAG"
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Create GitHub Release & Upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Ampere Pulse ${{ env.RELEASE_TAG }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          make_latest: true
+          files: app/build/outputs/apk/release/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup Keystore File
+        if: always()
+        run: |
+          rm -f "${{ github.workspace }}/my-upload-key.jks"

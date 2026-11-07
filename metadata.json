@@ -1,0 +1,6 @@
+{
+  "name": "Ampere Pulse",
+  "description": "Ultra-modern battery and power telemetry monitor with Liquid Glass M5 obsidian styling and live neon phosphorus glowing waveforms.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
