@@ -19,3 +19,4 @@ debug.keystore
 *.jks
 *.keystore
 !debug.keystore
+!my-upload-key.jks

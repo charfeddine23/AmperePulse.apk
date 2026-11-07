@@ -31,15 +31,39 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
 
-      - name: Decode Keystore
-        id: decode_keystore
+      - name: Setup Signing Keystore
+        id: setup_keystore
         run: |
-          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "::error::KEYSTORE_BASE64 secret is not set!"
-            exit 1
+          KEYSTORE_FILE="${{ github.workspace }}/my-upload-key.jks"
+
+          # 1. Use custom GitHub Secret if configured
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "Using KEYSTORE_BASE64 from GitHub Secrets."
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "$KEYSTORE_FILE"
+            echo "STORE_PASSWORD=${{ secrets.STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
+
+          # 2. Otherwise use the integrated repository keystore
+          elif [ -f "$KEYSTORE_FILE" ]; then
+            echo "Using repository release keystore (my-upload-key.jks)."
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+
+          # 3. Fallback: generate new release keystore on the fly
+          else
+            echo "Generating fresh release keystore..."
+            keytool -genkeypair -v -keystore "$KEYSTORE_FILE" \
+              -alias "upload" -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "android" -keypass "android" \
+              -dname "CN=AmperePulse, OU=Release, O=AIStudio, L=Global, S=Global, C=US"
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > "${{ github.workspace }}/my-upload-key.jks"
-          echo "Keystore successfully decoded to ${{ github.workspace }}/my-upload-key.jks"
+
+          # Ensure keystore is present in both root and app module directories
+          cp "$KEYSTORE_FILE" "${{ github.workspace }}/app/my-upload-key.jks"
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
+          echo "Keystore is ready at $KEYSTORE_FILE"
 
       - name: Extract Version Name & Configure Tag
         id: versioning
@@ -63,9 +87,9 @@ jobs:
 
       - name: Build Release APK
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
-          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
+          STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
           ./gradlew assembleRelease --stacktrace --no-daemon
 
@@ -81,8 +105,3 @@ jobs:
           files: app/build/outputs/apk/release/app-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup Keystore File
-        if: always()
-        run: |
-          rm -f "${{ github.workspace }}/my-upload-key.jks"
