@@ -8,13 +8,17 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -26,10 +30,13 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.data.TelemetryPoint
 import com.example.ui.theme.TactileRoyalBlue
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -159,8 +166,8 @@ fun MetricSparkline(
 }
 
 /**
- * 90 FPS Oscilloscope Waveform Graph with Live Phosphor Scanline,
- * Dual-Layer Bloom Stroke, Dynamic Grid, and Telemetry Peak/Valley Trackers.
+ * 90 FPS Laboratory Oscilloscope Waveform Graph with Live Phosphor Scanline,
+ * Interactive Touch Scrubbing, Dual-Layer Bloom, and Telemetry Peak/Valley Trackers.
  */
 @Composable
 fun DetailedWaveformGraph(
@@ -181,7 +188,7 @@ fun DetailedWaveformGraph(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = LinearEasing),
+            animation = tween(2200, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "scanlineFrac"
@@ -198,16 +205,54 @@ fun DetailedWaveformGraph(
         label = "beaconPulse"
     )
 
+    // Touch scrubbing state
+    var scrubIndex by remember { mutableStateOf<Int?>(null) }
+
     // Reusable Path instances to eliminate GC overhead at 90Hz
     val strokePath = remember { Path() }
     val fillPath = remember { Path() }
     val gridPath = remember { Path() }
+    val cursorPath = remember { Path() }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(heightDp)
             .graphicsLayer { clip = false }
+            .pointerInput(points) {
+                detectTapGestures(
+                    onPress = { offset ->
+                        if (points.isNotEmpty()) {
+                            val stepX = size.width / (points.size - 1).coerceAtLeast(1)
+                            val idx = (offset.x / stepX).toInt().coerceIn(0, points.size - 1)
+                            scrubIndex = idx
+                            tryAwaitRelease()
+                            scrubIndex = null
+                        }
+                    }
+                )
+            }
+            .pointerInput(points) {
+                detectDragGestures(
+                    onDragStart = { offset ->
+                        if (points.isNotEmpty()) {
+                            val stepX = size.width / (points.size - 1).coerceAtLeast(1)
+                            val idx = (offset.x / stepX).toInt().coerceIn(0, points.size - 1)
+                            scrubIndex = idx
+                        }
+                    },
+                    onDragEnd = { scrubIndex = null },
+                    onDragCancel = { scrubIndex = null },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        if (points.isNotEmpty()) {
+                            val stepX = size.width / (points.size - 1).coerceAtLeast(1)
+                            val idx = (change.position.x / stepX).toInt().coerceIn(0, points.size - 1)
+                            scrubIndex = idx
+                        }
+                    }
+                )
+            }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
@@ -250,14 +295,19 @@ fun DetailedWaveformGraph(
 
             var minCoord = Offset(prevX, prevY)
             var maxCoord = Offset(prevX, prevY)
+            val coords = mutableListOf<Offset>()
+            coords.add(Offset(prevX, prevY))
 
             for (i in 1 until points.size) {
                 val currX = i * stepX
                 val normalizedY = (points[i].value - minVal) / range
                 val currY = h - (normalizedY * (h * 0.68f) + h * 0.16f)
 
-                if (i == minIdx) minCoord = Offset(currX, currY)
-                if (i == maxIdx) maxCoord = Offset(currX, currY)
+                val ptCoord = Offset(currX, currY)
+                coords.add(ptCoord)
+
+                if (i == minIdx) minCoord = ptCoord
+                if (i == maxIdx) maxCoord = ptCoord
 
                 val cx1 = prevX + (currX - prevX) / 2f
                 val cy1 = prevY
@@ -274,7 +324,24 @@ fun DetailedWaveformGraph(
             fillPath.lineTo(prevX, h)
             fillPath.close()
 
-            // 1. Luminous Gradient Underfill with Soft Tactile Fade
+            // 1. Horizontal Reference Guideline for Peak & Valley
+            val dashRef = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+            drawLine(
+                color = lineColor.copy(alpha = if (isDarkMode) 0.25f else 0.18f),
+                start = Offset(0f, maxCoord.y),
+                end = Offset(w, maxCoord.y),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = dashRef
+            )
+            drawLine(
+                color = Color(0xFF64748B).copy(alpha = if (isDarkMode) 0.25f else 0.15f),
+                start = Offset(0f, minCoord.y),
+                end = Offset(w, minCoord.y),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = dashRef
+            )
+
+            // 2. Luminous Gradient Underfill with Soft Tactile Fade
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
@@ -288,39 +355,39 @@ fun DetailedWaveformGraph(
                 )
             )
 
-            // 2. Wide Glow Bloom Stroke (creates the 90 FPS neon/glass luminescence)
+            // 3. Wide Glow Bloom Stroke (creates the 90 FPS neon/glass luminescence)
             drawPath(
                 path = strokePath,
                 color = lineColor.copy(alpha = if (isDarkMode) 0.32f else 0.18f),
                 style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // 3. Crisp High-Precision Center Stroke
+            // 4. Crisp High-Precision Center Stroke
             drawPath(
                 path = strokePath,
                 color = lineColor,
                 style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // 4. Oscilloscope Phosphor Scanline Laser Sweep
-            if (showScanline) {
+            // 5. Oscilloscope Phosphor Scanline Laser Sweep
+            if (showScanline && scrubIndex == null) {
                 val scanX = scanlineFraction * w
-                val beamWidth = 24.dp.toPx()
+                val beamWidth = 26.dp.toPx()
 
                 // Phosphor decay trail behind the laser sweep
                 drawRect(
                     brush = Brush.horizontalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            lineColor.copy(alpha = if (isDarkMode) 0.18f else 0.10f),
-                            lineColor.copy(alpha = if (isDarkMode) 0.38f else 0.22f),
+                            lineColor.copy(alpha = if (isDarkMode) 0.16f else 0.08f),
+                            lineColor.copy(alpha = if (isDarkMode) 0.38f else 0.20f),
                             Color.Transparent
                         ),
                         startX = (scanX - beamWidth).coerceAtLeast(0f),
-                        endX = (scanX + beamWidth * 0.3f).coerceAtMost(w)
+                        endX = (scanX + beamWidth * 0.35f).coerceAtMost(w)
                     ),
                     topLeft = Offset((scanX - beamWidth).coerceAtLeast(0f), 0f),
-                    size = androidx.compose.ui.geometry.Size(beamWidth * 1.3f, h)
+                    size = androidx.compose.ui.geometry.Size(beamWidth * 1.35f, h)
                 )
 
                 // Laser sweep vertical needle line
@@ -332,7 +399,7 @@ fun DetailedWaveformGraph(
                 )
             }
 
-            // 5. Min / Max Telemetry Markers
+            // 6. Min / Max Telemetry Markers
             // Valley Marker (Min)
             drawCircle(
                 color = Color(0xFF64748B).copy(alpha = 0.5f),
@@ -351,23 +418,57 @@ fun DetailedWaveformGraph(
                 center = maxCoord
             )
 
-            // 6. Live Telemetry Head Tracking Beacon (at the latest live reading)
-            val headOffset = Offset(prevX, prevY)
-            drawCircle(
-                color = lineColor.copy(alpha = 0.25f),
-                radius = 9.dp.toPx() * beaconPulse,
-                center = headOffset
-            )
-            drawCircle(
-                color = lineColor,
-                radius = 4.5.dp.toPx(),
-                center = headOffset
-            )
-            drawCircle(
-                color = Color.White,
-                radius = 2.2.dp.toPx(),
-                center = headOffset
-            )
+            // 7. Interactive Scrubbing Cursor OR Live Telemetry Head Tracking Beacon
+            val activeScrubIdx = scrubIndex
+            if (activeScrubIdx != null && activeScrubIdx in coords.indices) {
+                val scrubCoord = coords[activeScrubIdx]
+                val scrubPt = points[activeScrubIdx]
+
+                // Crosshair vertical cursor
+                val dashCursor = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)
+                drawLine(
+                    color = lineColor,
+                    start = Offset(scrubCoord.x, 0f),
+                    end = Offset(scrubCoord.x, h),
+                    strokeWidth = 1.5.dp.toPx(),
+                    pathEffect = dashCursor
+                )
+
+                // Target glowing reticle
+                drawCircle(
+                    color = lineColor.copy(alpha = 0.35f),
+                    radius = 8.dp.toPx(),
+                    center = scrubCoord
+                )
+                drawCircle(
+                    color = lineColor,
+                    radius = 4.dp.toPx(),
+                    center = scrubCoord
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 2.dp.toPx(),
+                    center = scrubCoord
+                )
+            } else {
+                // Live Telemetry Head Tracking Beacon (at the latest live reading)
+                val headOffset = Offset(prevX, prevY)
+                drawCircle(
+                    color = lineColor.copy(alpha = 0.25f),
+                    radius = 9.dp.toPx() * beaconPulse,
+                    center = headOffset
+                )
+                drawCircle(
+                    color = lineColor,
+                    radius = 4.5.dp.toPx(),
+                    center = headOffset
+                )
+                drawCircle(
+                    color = Color.White,
+                    radius = 2.2.dp.toPx(),
+                    center = headOffset
+                )
+            }
         }
     }
 }

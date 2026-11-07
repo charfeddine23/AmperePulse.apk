@@ -14,6 +14,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -47,11 +49,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -102,20 +104,27 @@ fun Page5MySpaceScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
+    var timebaseWindow by remember { mutableStateOf(30) } // 10, 30, or all
+
+    // Optional simulation override for testing all Current Glow VFX states on demand
+    var simulatedCurrentOverride by remember { mutableStateOf<Int?>(null) }
+    val activeCurrentMa = simulatedCurrentOverride ?: telemetry.currentMa
 
     // DYNAMIC CURRENT-DRIVEN AMBIENT GLOW (VFX)
     // Bind the background ambient glow layer to live Current (mA) state:
-    // - High Inflow / Stress (> 2500 mA or high thermals): Reactive Red Ambient Glow
-    // - Stable / Safe Flow (300 - 2500 mA): Serene Emerald Green
-    // - Low Trickle Flow (0 - 299 mA): Serene Royal Blue
-    // - High Load Drain (< -600 mA): Energetic Violet/Coral warning
-    // - Idle Drain (-600 - 0 mA): Cool Cyan/Slate
-    val currentMa = telemetry.currentMa
+    // - High Inflow / Stress (> 2500 mA or high thermals): Reactive Red Ambient Glow (#FF3D00)
+    // - Stable / Safe Flow (400 - 2500 mA): Serene Emerald Green (#00C853)
+    // - Low Trickle Flow (0 - 399 mA): Serene Royal Blue (#2962FF)
+    // - High Load Drain (< -600 mA): Energetic Violet/Amber (#A855F7)
+    // - Idle Drain (-600 - 0 mA): Cool Cyan/Slate (#00B0FF)
+    val isHighStress = activeCurrentMa > 2500 || telemetry.temperatureC >= 38.5f
+    val isSafeFlow = activeCurrentMa in 400..2500 && !isHighStress
+
     val targetAmbientColor = when {
-        currentMa > 2500 || telemetry.temperatureC >= 38.5f -> TactileCoralRed // High Inflow Stress
-        currentMa in 400..2500 -> TactileGreen // Stable / Safe Flow
-        currentMa in 0..399 -> TactileRoyalBlue // Serene Trickle
-        currentMa < -600 -> Color(0xFFA855F7) // High Load Drain
+        isHighStress -> TactileCoralRed // High Inflow Stress
+        isSafeFlow -> TactileGreen // Stable / Safe Flow
+        activeCurrentMa in 0..399 -> TactileRoyalBlue // Serene Trickle
+        activeCurrentMa < -600 -> Color(0xFFA855F7) // High Load Drain
         else -> Color(0xFF00B0FF) // Cool Idle Drain
     }
 
@@ -128,20 +137,28 @@ fun Page5MySpaceScreen(
         label = "ambientGlowColor"
     )
 
-    val activePoints = when (selectedMetric) {
+    // Slice history buffer according to selected timebase window
+    val rawActivePoints = when (selectedMetric) {
         MetricType.VOLTAGE -> voltageHistory
         MetricType.CURRENT -> currentHistory
         MetricType.WATTAGE -> wattageHistory
         MetricType.TEMPERATURE -> temperatureHistory
     }
+    val activePoints = remember(rawActivePoints, timebaseWindow) {
+        if (timebaseWindow <= 0 || rawActivePoints.size <= timebaseWindow) {
+            rawActivePoints
+        } else {
+            rawActivePoints.takeLast(timebaseWindow)
+        }
+    }
 
     // 90 FPS Breathing Ambient Aura & Particle Shift
     val infiniteTransition = rememberInfiniteTransition(label = "ambientPulse90Fps")
     val ambientAuraBreath by infiniteTransition.animateFloat(
-        initialValue = 0.65f,
+        initialValue = if (isHighStress) 0.80f else 0.65f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = FastOutSlowInEasing),
+            animation = tween(if (isHighStress) 800 else 1600, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "auraBreath"
@@ -157,6 +174,7 @@ fun Page5MySpaceScreen(
             ambientColor = animatedAmbientColor,
             breatheScale = ambientAuraBreath,
             isDarkMode = isDark,
+            isStress = isHighStress,
             glowIntensity = glow
         )
 
@@ -212,7 +230,7 @@ fun Page5MySpaceScreen(
                                         color = textColor
                                     )
                                     Text(
-                                        text = "90Hz Real-Time Sensors & Dynamic VFX",
+                                        text = "90Hz Precision Oscilloscope & Dynamic VFX",
                                         fontFamily = PlusJakartaSansFontFamily,
                                         fontSize = 11.sp,
                                         color = TextSlate
@@ -234,15 +252,64 @@ fun Page5MySpaceScreen(
                     .padding(horizontal = 16.dp)
             ) {
                 CurrentFlowVfxBar(
-                    currentMa = currentMa,
+                    currentMa = activeCurrentMa,
                     ambientColor = animatedAmbientColor,
                     isDarkMode = isDark
                 )
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Interactive Current-Driven Ambient Glow VFX Simulator Chips
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                CurrentVfxTestChip(
+                    label = "🔴 Stress Inflow (+3200mA)",
+                    isSelected = simulatedCurrentOverride == 3200,
+                    chipColor = TactileCoralRed,
+                    isDark = isDark,
+                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 3200) null else 3200 }
+                )
+                CurrentVfxTestChip(
+                    label = "🟢 Safe Flow (+1800mA)",
+                    isSelected = simulatedCurrentOverride == 1800,
+                    chipColor = TactileGreen,
+                    isDark = isDark,
+                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 1800) null else 1800 }
+                )
+                CurrentVfxTestChip(
+                    label = "🔵 Trickle (+200mA)",
+                    isSelected = simulatedCurrentOverride == 200,
+                    chipColor = TactileRoyalBlue,
+                    isDark = isDark,
+                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 200) null else 200 }
+                )
+                CurrentVfxTestChip(
+                    label = "🟣 High Drain (-900mA)",
+                    isSelected = simulatedCurrentOverride == -900,
+                    chipColor = Color(0xFFA855F7),
+                    isDark = isDark,
+                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == -900) null else -900 }
+                )
+                if (simulatedCurrentOverride != null) {
+                    CurrentVfxTestChip(
+                        label = "⚡ Real Sensor Mode",
+                        isSelected = false,
+                        chipColor = baseAccent,
+                        isDark = isDark,
+                        onClick = { simulatedCurrentOverride = null }
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 2x2 Floating Data Cards Grid (Tactile Neumorphic Cards)
+            // 2x2 Floating Data Cards Grid (Tactile Neumorphic Cards with Diffused Glow)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -262,21 +329,23 @@ fun Page5MySpaceScreen(
                         subtext = "Nominal 3.7V - 4.4V",
                         points = voltageHistory,
                         accentColor = if (selectedMetric == MetricType.VOLTAGE) animatedAmbientColor else baseAccent,
+                        ambientGlowColor = animatedAmbientColor,
                         isDarkMode = isDark,
                         glowIntensity = glow,
                         isSelected = selectedMetric == MetricType.VOLTAGE,
                         onClick = { selectedMetric = MetricType.VOLTAGE }
                     )
 
-                    val currentSign = if (telemetry.currentMa >= 0) "+" else ""
+                    val currentSign = if (activeCurrentMa >= 0) "+" else ""
                     MySpaceMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "CURRENT",
-                        value = "$currentSign${numberFormat.format(telemetry.currentMa)}",
+                        value = "$currentSign${numberFormat.format(activeCurrentMa)}",
                         unit = "mA",
-                        subtext = if (telemetry.currentMa >= 0) "Inflow charge" else "Discharge draw",
+                        subtext = if (activeCurrentMa >= 0) "Inflow charge" else "Discharge draw",
                         points = currentHistory,
                         accentColor = animatedAmbientColor,
+                        ambientGlowColor = animatedAmbientColor,
                         isDarkMode = isDark,
                         glowIntensity = glow,
                         isSelected = selectedMetric == MetricType.CURRENT,
@@ -289,14 +358,16 @@ fun Page5MySpaceScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    val instantaneousWattage = (telemetry.voltageMv / 1000f) * (abs(activeCurrentMa) / 1000f)
                     MySpaceMetricCard(
                         modifier = Modifier.weight(1f),
                         title = "WATTAGE",
-                        value = String.format(Locale.US, "%.2f", telemetry.wattageW),
+                        value = String.format(Locale.US, "%.2f", instantaneousWattage),
                         unit = "W",
                         subtext = "P = V × I Real-time",
                         points = wattageHistory,
                         accentColor = if (selectedMetric == MetricType.WATTAGE) animatedAmbientColor else baseAccent,
+                        ambientGlowColor = animatedAmbientColor,
                         isDarkMode = isDark,
                         glowIntensity = glow,
                         isSelected = selectedMetric == MetricType.WATTAGE,
@@ -317,6 +388,7 @@ fun Page5MySpaceScreen(
                         subtext = if (telemetry.temperatureC >= 40f) "Thermal Warning" else "Nominal Heat Zone",
                         points = temperatureHistory,
                         accentColor = if (selectedMetric == MetricType.TEMPERATURE) animatedAmbientColor else tempAccent,
+                        ambientGlowColor = animatedAmbientColor,
                         isDarkMode = isDark,
                         glowIntensity = glow,
                         isSelected = selectedMetric == MetricType.TEMPERATURE,
@@ -355,7 +427,7 @@ fun Page5MySpaceScreen(
                                     color = textColor
                                 )
                                 Text(
-                                    text = "Phosphor Laser Sweep & Hardware Waveform",
+                                    text = "Touch & Drag to scrub signals • Phosphor Laser Sweep",
                                     fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 10.sp,
                                     color = TextSlate
@@ -366,36 +438,58 @@ fun Page5MySpaceScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Interactive Channel Selector Chips
+                        // Interactive Channel Selector Chips + Timebase controls
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            MetricType.entries.forEach { metric ->
-                                val isSelected = metric == selectedMetric
-                                val chipBg = if (isSelected) {
-                                    animatedAmbientColor.copy(alpha = if (isDark) 0.25f else 0.15f)
-                                } else {
-                                    if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
-                                }
-                                val borderCol = if (isSelected) animatedAmbientColor else if (isDark) Color(0x33475569) else Color(0x33CBD5E1)
+                            // Channel chips
+                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                MetricType.entries.forEach { metric ->
+                                    val isSelected = metric == selectedMetric
+                                    val chipBg = if (isSelected) {
+                                        animatedAmbientColor.copy(alpha = if (isDark) 0.25f else 0.15f)
+                                    } else {
+                                        if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
+                                    }
+                                    val borderCol = if (isSelected) animatedAmbientColor else if (isDark) Color(0x33475569) else Color(0x33CBD5E1)
 
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(chipBg)
-                                        .border(1.dp, borderCol, RoundedCornerShape(8.dp))
-                                        .clickable { selectedMetric = metric }
-                                        .padding(vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(chipBg)
+                                            .border(1.dp, borderCol, RoundedCornerShape(8.dp))
+                                            .clickable { selectedMetric = metric }
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = metric.name.take(4),
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            color = if (isSelected) animatedAmbientColor else TextSlate
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Timebase window chips (10s, 30s, ALL)
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                listOf(10 to "10s", 30 to "30s", 0 to "ALL").forEach { (sec, label) ->
+                                    val isSelected = timebaseWindow == sec
                                     Text(
-                                        text = metric.name.take(4),
+                                        text = label,
                                         fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 10.sp,
-                                        color = if (isSelected) animatedAmbientColor else TextSlate
+                                        color = if (isSelected) animatedAmbientColor else TextSlate,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) animatedAmbientColor.copy(alpha = 0.18f) else Color.Transparent)
+                                            .clickable { timebaseWindow = sec }
+                                            .padding(horizontal = 6.dp, vertical = 3.dp)
                                     )
                                 }
                             }
@@ -403,13 +497,13 @@ fun Page5MySpaceScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Live Waveform Canvas with 90 FPS Laser Sweep
+                        // Live Waveform Canvas with 90 FPS Laser Sweep & Scrubbing
                         DetailedWaveformGraph(
                             points = activePoints,
                             lineColor = animatedAmbientColor,
                             isDarkMode = isDark,
                             glowIntensity = glow,
-                            heightDp = 150.dp,
+                            heightDp = 155.dp,
                             showGrid = true,
                             showScanline = true
                         )
@@ -428,7 +522,7 @@ fun Page5MySpaceScreen(
                                 OscilloscopeStatPill("MIN", String.format(Locale.US, "%.1f", minVal), isDark)
                                 OscilloscopeStatPill("LIVE", String.format(Locale.US, "%.1f", currentVal), isDark, animatedAmbientColor)
                                 OscilloscopeStatPill("PEAK", String.format(Locale.US, "%.1f", maxVal), isDark)
-                                OscilloscopeStatPill("RATE", "90 FPS", isDark, animatedAmbientColor)
+                                OscilloscopeStatPill("90Hz ENGINE", "LOCKED", isDark, animatedAmbientColor)
                             }
                         }
                     }
@@ -462,7 +556,7 @@ fun Page5MySpaceScreen(
                         .clickable {
                             onAddVitalLog(
                                 "Vital Pulse Diagnostics Sweep",
-                                "All 12 battery registers verified OK: ${telemetry.voltageMv}mV, ${telemetry.currentMa}mA, ${telemetry.temperatureC}°C, 0 degradation.",
+                                "All 12 battery registers verified OK: ${telemetry.voltageMv}mV, ${activeCurrentMa}mA, ${telemetry.temperatureC}°C, 0 degradation.",
                                 "PASS OK",
                                 "check"
                             )
@@ -519,6 +613,7 @@ private fun CurrentDrivenAmbientGlowBackdrop(
     ambientColor: Color,
     breatheScale: Float,
     isDarkMode: Boolean,
+    isStress: Boolean,
     glowIntensity: Float
 ) {
     Canvas(
@@ -531,13 +626,13 @@ private fun CurrentDrivenAmbientGlowBackdrop(
 
         // Top halo centered around the live telemetry grid
         val centerTop = Offset(w * 0.5f, h * 0.28f)
-        val radiusTop = (w * 0.65f) * breatheScale
+        val radiusTop = (w * (if (isStress) 0.75f else 0.65f)) * breatheScale
 
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ambientColor.copy(alpha = if (isDarkMode) 0.18f * glowIntensity else 0.10f * glowIntensity),
-                    ambientColor.copy(alpha = if (isDarkMode) 0.05f * glowIntensity else 0.02f * glowIntensity),
+                    ambientColor.copy(alpha = if (isDarkMode) (if (isStress) 0.26f else 0.18f) * glowIntensity else (if (isStress) 0.16f else 0.10f) * glowIntensity),
+                    ambientColor.copy(alpha = if (isDarkMode) 0.06f * glowIntensity else 0.03f * glowIntensity),
                     Color.Transparent
                 ),
                 center = centerTop,
@@ -547,14 +642,14 @@ private fun CurrentDrivenAmbientGlowBackdrop(
             radius = radiusTop
         )
 
-        // Subtle secondary bottom halo behind the oscilloscope
-        val centerBottom = Offset(w * 0.5f, h * 0.58f)
-        val radiusBottom = (w * 0.55f) * breatheScale
+        // Secondary bottom halo behind the oscilloscope
+        val centerBottom = Offset(w * 0.5f, h * 0.60f)
+        val radiusBottom = (w * 0.58f) * breatheScale
 
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    ambientColor.copy(alpha = if (isDarkMode) 0.14f * glowIntensity else 0.07f * glowIntensity),
+                    ambientColor.copy(alpha = if (isDarkMode) (if (isStress) 0.20f else 0.14f) * glowIntensity else (if (isStress) 0.12f else 0.07f) * glowIntensity),
                     Color.Transparent
                 ),
                 center = centerBottom,
@@ -562,6 +657,35 @@ private fun CurrentDrivenAmbientGlowBackdrop(
             ),
             center = centerBottom,
             radius = radiusBottom
+        )
+    }
+}
+
+/**
+ * Quick-Test Chip for Current-Driven Ambient Glow VFX
+ */
+@Composable
+private fun CurrentVfxTestChip(
+    label: String,
+    isSelected: Boolean,
+    chipColor: Color,
+    isDark: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) chipColor.copy(alpha = if (isDark) 0.28f else 0.16f) else if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
+            .border(1.dp, if (isSelected) chipColor else if (isDark) Color(0x33475569) else Color(0x33CBD5E1), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = OutfitFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            color = if (isSelected) chipColor else if (isDark) TextWhite else TextCharcoal
         )
     }
 }
@@ -581,9 +705,9 @@ private fun CurrentFlowVfxBar(
 
     val stateTitle = when {
         currentMa > 2500 -> "⚡ HIGH INFLOW SURGE (+${currentMa} mA)"
-        currentMa in 400..2500 -> "🌿 SERENE SAFE CHARGE (+${currentMa} mA)"
-        currentMa in 0..399 -> "🔋 STABLE TRICKLE FLOW (+${currentMa} mA)"
-        currentMa < -600 -> "🔥 HIGH LOAD DRAIN (${currentMa} mA)"
+        currentMa in 400..2500 -> "🌿 SERENE SAFE CHARGING (+${currentMa} mA)"
+        currentMa in 0..399 -> "🔋 SERENE TRICKLE FLOW (+${currentMa} mA)"
+        currentMa < -600 -> "🔥 HEAVY LOAD DRAIN (${currentMa} mA)"
         else -> "⚡ IDLE SYSTEM DRAW (${currentMa} mA)"
     }
 
@@ -593,7 +717,7 @@ private fun CurrentFlowVfxBar(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (absCurrent > 2000) 1000 else 2000, easing = LinearEasing),
+            animation = tween(if (absCurrent > 2000) 900 else 1800, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "flowPhase"
@@ -692,72 +816,93 @@ fun MySpaceMetricCard(
     points: List<TelemetryPoint>,
     modifier: Modifier = Modifier,
     accentColor: Color,
+    ambientGlowColor: Color = accentColor,
     isDarkMode: Boolean,
     glowIntensity: Float,
     isSelected: Boolean = false,
     onClick: () -> Unit
 ) {
-    LiquidGlassCard(
-        modifier = modifier,
-        accentColor = accentColor,
-        isDarkMode = isDarkMode,
-        glowIntensity = if (isSelected) 1.0f else glowIntensity,
-        onClick = onClick
+    Box(
+        modifier = modifier
+            // Outer diffused ambient aura around each card
+            .drawBehind {
+                val auraRadius = size.width * 0.6f
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            ambientGlowColor.copy(alpha = if (isDarkMode) 0.12f * glowIntensity else 0.07f * glowIntensity),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.5f, size.height * 0.5f),
+                        radius = auraRadius
+                    ),
+                    center = Offset(size.width * 0.5f, size.height * 0.5f),
+                    radius = auraRadius
+                )
+            }
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+        LiquidGlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            accentColor = accentColor,
+            isDarkMode = isDarkMode,
+            glowIntensity = if (isSelected) 1.0f else glowIntensity,
+            onClick = onClick
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.5.sp,
+                        color = if (isSelected) accentColor else TextSlate
+                    )
+                    PulsingNeonDot(color = accentColor, sizeDp = 5.dp)
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = value,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp,
+                        color = if (isDarkMode) TextWhite else TextCharcoal
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = unit,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                        color = accentColor,
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    )
+                }
+
                 Text(
-                    text = title,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 11.sp,
-                    letterSpacing = 0.5.sp,
-                    color = if (isSelected) accentColor else TextSlate
+                    text = subtext,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 9.sp,
+                    color = TextSlate
                 )
-                PulsingNeonDot(color = accentColor, sizeDp = 5.dp)
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                MetricSparkline(
+                    points = points,
+                    lineColor = accentColor,
+                    isDarkMode = isDarkMode,
+                    glowIntensity = glowIntensity,
+                    heightDp = 30.dp
+                )
             }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Row(verticalAlignment = Alignment.Bottom) {
-                Text(
-                    text = value,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
-                    color = if (isDarkMode) TextWhite else TextCharcoal
-                )
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                    text = unit,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 12.sp,
-                    color = accentColor,
-                    modifier = Modifier.padding(bottom = 2.dp)
-                )
-            }
-
-            Text(
-                text = subtext,
-                fontFamily = PlusJakartaSansFontFamily,
-                fontSize = 9.sp,
-                color = TextSlate
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            MetricSparkline(
-                points = points,
-                lineColor = accentColor,
-                isDarkMode = isDarkMode,
-                glowIntensity = glowIntensity,
-                heightDp = 30.dp
-            )
         }
     }
 }
