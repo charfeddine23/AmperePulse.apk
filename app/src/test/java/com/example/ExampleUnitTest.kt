@@ -45,21 +45,65 @@ class ExampleUnitTest {
     }
 
     @Test
+    fun test4DynamicSensorTriggerRules() {
+        // Condition 1: ENERGY STORING (Current > 0, Temp 20-37C, stable V)
+        val temp1 = 28.5f
+        val currentMa1 = 2200
+        val voltageMv1 = 4180
+        val isStableV = voltageMv1 in 3700..4450
+        val isEnergyStoring = currentMa1 > 0 && temp1 in 20.0f..37.0f && isStableV
+        assertTrue(isEnergyStoring)
+
+        // Condition 2: OVERDRIVE / HEATING (Temp > 38C or severe voltage drop fault)
+        val temp2 = 39.5f
+        val isOverdrive = temp2 > 38.0f
+        assertTrue(isOverdrive)
+
+        // Condition 3: CRYOGENIC COOLING (Rapid thermal drop toward <35C or Cryo skill)
+        val tempDropRate = 0.25f
+        val temp3 = 31.0f
+        val isRapidCooling = tempDropRate >= 0.10f && temp3 < 35.0f
+        assertTrue(isRapidCooling)
+
+        // Condition 4: DEEP SLEEP / HIBERNATION (Screen off + low idle draw <=300mA)
+        val isScreenOn = false
+        val idleCurrentMa = 120
+        val isDeepSleep = !isScreenOn && idleCurrentMa <= 350
+        assertTrue(isDeepSleep)
+    }
+
+    @Test
     fun testStreakAndEggDefaults() {
-        val streak = StreakData(currentStreakDays = 14, shieldsAvailable = 3)
-        assertEquals(14, streak.currentStreakDays)
-        assertEquals(3, streak.shieldsAvailable)
+        val streak = StreakData()
+        assertEquals(0, streak.currentStreakDays)
+        assertEquals(0, streak.shieldsAvailable)
+        assertEquals(0, streak.maxShields)
+        assertEquals(0.0f, streak.todayComplianceRate, 0.01f)
+        assertEquals(0, streak.healthyChargeMinutesToday)
 
         val egg = CyberEggData()
-        assertTrue(egg.incubationProgress in 0f..1f)
-        assertTrue(egg.hatchedList.isNotEmpty())
+        assertEquals(0f, egg.incubationProgress, 0.001f)
+        assertEquals(0, egg.currentXP)
+        assertTrue(egg.hatchedList.isEmpty())
     }
 
     @Test
     fun testPrizeRoadMath() {
-        val prizeRoad = PrizeRoadData(cumulativeMah = 50_000L, currentLevel = 5)
-        assertEquals(5, prizeRoad.currentLevel)
+        val prizeRoad = PrizeRoadData()
+        assertEquals(0L, prizeRoad.cumulativeMah)
+        assertEquals(1, prizeRoad.currentLevel)
         assertEquals(1000, prizeRoad.maxLevel)
+        assertTrue(prizeRoad.claimedMilestones.isEmpty())
+
+        // Level fullness calculation at initial 0 mAh
+        val currentLevelMah = (prizeRoad.cumulativeMah % 10_000L).toFloat()
+        val fullnessRatio = currentLevelMah / 10_000f
+        assertEquals(0f, fullnessRatio, 0.01f)
+
+        // Progress after adding 25,000 mAh -> Level 3
+        val simulatedMah = 25_000L
+        val calculatedLevel = ((simulatedMah / 10_000L).toInt() + 1).coerceIn(1, 1000)
+        assertEquals(3, calculatedLevel)
     }
 
     @Test

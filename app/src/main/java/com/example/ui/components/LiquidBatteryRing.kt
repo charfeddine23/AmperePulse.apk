@@ -320,14 +320,17 @@ fun LiquidBatteryRing(
                 )
             }
 
-            // Living State XP Ticker Label
+            // Real-time hardware sensor status indicator (no XP display)
             Text(
-                text = livingState.xpRateLabel.uppercase(),
+                text = if (status == BatteryStatus.CHARGING)
+                    "${String.format("%.1f", wattageW)}W • ACTIVE CHARGE"
+                else
+                    "HARDWARE SENSORS ACTIVE",
                 fontFamily = PlusJakartaSansFontFamily,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 10.sp,
-                letterSpacing = 0.4.sp,
-                color = if (livingState.isBleeding) Color(0xFFFF3D00) else TextSlate
+                letterSpacing = 0.5.sp,
+                color = TextSlate
             )
         }
     }

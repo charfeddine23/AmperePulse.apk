@@ -38,6 +38,7 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     val eggData: StateFlow<CyberEggData> = repository.eggData
     val prizeRoadData: StateFlow<PrizeRoadData> = repository.prizeRoadData
     val techCrew: StateFlow<List<TechCrewMember>> = repository.techCrew
+    val isAutoSensorMode: StateFlow<Boolean> = repository.isAutoSensorMode
 
     private val _selectedTab = MutableStateFlow(NavigationTab.BATTERY)
     val selectedTab: StateFlow<NavigationTab> = _selectedTab.asStateFlow()
@@ -60,8 +61,12 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         _isSettingsMenuOpen.value = open
     }
 
-    fun selectLivingState(state: LivingBatteryState) {
+    fun selectLivingState(state: LivingBatteryState?) {
         repository.setLivingBatteryState(state)
+    }
+
+    fun setAutoSensorMode(auto: Boolean) {
+        repository.setAutoSensorMode(auto)
     }
 
     fun triggerCrewAbility(crewId: String) {
@@ -84,18 +89,7 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         repository.repairShield()
     }
 
-    fun triggerEmergencyCooling() {
-        repository.setLivingBatteryState(LivingBatteryState.COOLING)
-        repository.addManualSessionLog(
-            title = "CRYO COOLANT ENGAGED",
-            desc = "Thermal runaway suppressed. Active liquid nitrogen cooling deployed to protect lithium matrix.",
-            statTag = "-8°C Shock",
-            type = "temp"
-        )
-    }
-
     fun addManualLog(title: String, desc: String, statTag: String, type: String) {
         repository.addManualSessionLog(title, desc, statTag, type)
     }
 }
-

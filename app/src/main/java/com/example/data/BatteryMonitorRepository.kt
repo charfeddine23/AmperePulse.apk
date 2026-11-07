@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.PowerManager
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,11 @@ class BatteryMonitorRepository(
     private val scope: CoroutineScope
 ) {
     private val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
+    private val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+
+    private var previousTempC: Float = 28.5f
+    private val _isAutoSensorMode = MutableStateFlow(true)
+    val isAutoSensorMode: StateFlow<Boolean> = _isAutoSensorMode.asStateFlow()
 
     private val _telemetry = MutableStateFlow(BatteryTelemetry())
     val telemetry: StateFlow<BatteryTelemetry> = _telemetry.asStateFlow()
@@ -75,7 +81,9 @@ class BatteryMonitorRepository(
                 primaryColor = Color(0xFF00F0FF),
                 abilityName = "Cryo Nitrogen Blast",
                 abilityDescription = "Discharges active liquid nitrogen to suppress battery core thermals by -4°C.",
-                cooldownTotalSec = 45
+                cooldownTotalSec = 45,
+                unlockLevel = 2,
+                isUnlocked = false // Earned at Level 2!
             ),
             TechCrewMember(
                 id = "crew_2",
@@ -85,7 +93,9 @@ class BatteryMonitorRepository(
                 primaryColor = Color(0xFF00FF87),
                 abilityName = "Harmonic Voltage Lock",
                 abilityDescription = "Eliminates terminal voltage ripple and injects +250 XP into battery matrix.",
-                cooldownTotalSec = 60
+                cooldownTotalSec = 60,
+                unlockLevel = 10,
+                isUnlocked = false // Earned at Level 10!
             ),
             TechCrewMember(
                 id = "crew_3",
@@ -95,7 +105,9 @@ class BatteryMonitorRepository(
                 primaryColor = Color(0xFFA855F7),
                 abilityName = "Background Siphon Flush",
                 abilityDescription = "Suppresses phantom background daemon draws, reducing active current load.",
-                cooldownTotalSec = 50
+                cooldownTotalSec = 50,
+                unlockLevel = 25,
+                isUnlocked = false // Earned at Level 25!
             ),
             TechCrewMember(
                 id = "crew_4",
@@ -105,7 +117,9 @@ class BatteryMonitorRepository(
                 primaryColor = Color(0xFFFFB800),
                 abilityName = "Restore Health Shield",
                 abilityDescription = "Rebuilds depleted battery health shields to guard against thermal spikes.",
-                cooldownTotalSec = 90
+                cooldownTotalSec = 90,
+                unlockLevel = 50,
+                isUnlocked = false // Earned at Level 50!
             )
         )
     }
@@ -139,27 +153,11 @@ class BatteryMonitorRepository(
     private fun initSessionLogsSeed() {
         _sessionLogs.value = listOf(
             SessionLog(
-                id = "1",
-                title = "Overdrive Bleed Thwarted",
-                timestampFormatted = "4m ago",
-                description = "Thermal mitigation engaged. High-rate energy absorption contained.",
-                statTag = "-1 XP Bleed Neutralized",
-                type = "temp"
-            ),
-            SessionLog(
-                id = "2",
-                title = "Fast Plasma Flow Active",
-                timestampFormatted = "18m ago",
-                description = "AC Wall Adapter protocol engaged at 9.0V / 2.4A. Egg incubation velocity x2.0.",
-                statTag = "+19.8W Peak",
-                type = "charge"
-            ),
-            SessionLog(
-                id = "3",
-                title = "Compliance Shield Verified",
-                timestampFormatted = "1h ago",
-                description = "Daily 20%-80% lithium cell guard criteria satisfied with zero degradation.",
-                statTag = "Streak Day 14",
+                id = "init_0",
+                title = "Hardware Monitor Initialized",
+                timestampFormatted = "Just now",
+                description = "Sensors calibrated from 0. Level 1 Cadet profile active. Advance on the Prize Road to earn shields and specialist crew.",
+                statTag = "LVL 1 • 0 mAh",
                 type = "check"
             )
         )
@@ -239,13 +237,52 @@ class BatteryMonitorRepository(
 
         val wattageW = (voltageMv / 1000.0f) * (abs(currentMa) / 1000.0f)
 
-        // Resolve Living Battery State
-        val livingState = manualStateOverride ?: when {
-            temperatureC >= 39.0f -> LivingBatteryState.OVERDRIVE_HEATING
-            simulatedTempDelta < -1.0f -> LivingBatteryState.COOLING
+        // Real-Time Sensor Telemetry Checks
+        val isScreenInteractive = powerManager?.isInteractive ?: true
+        val tempDropRate = previousTempC - temperatureC
+        previousTempC = temperatureC
+
+        // 1. ENERGY STORING (Phosphor Green #00C853)
+        // Condition: Charging active (Current > 0 mA) AND Temp between 20°C and 37°C AND stable voltage (3700 - 4450 mV).
+        val isStableVoltage = voltageMv in 3700..4450
+        val isEnergyStoringCondition = (isCharging || currentMa > 0) &&
+                (temperatureC in 20.0f..37.0f) &&
+                isStableVoltage
+
+        // 2. OVERDRIVE / HEATING (Warning Red #FF3D00)
+        // Condition: Temp > 38°C OR high internal resistance/voltage drop (poor cable/charger).
+        val isVoltageDropFault = isCharging && (voltageMv < 3700 || (currentMa > 2000 && voltageMv < 3800))
+        val isOverdriveHeatingCondition = temperatureC > 38.0f || isVoltageDropFault
+
+        // 3. CRYOGENIC COOLING (Ice Blue #00B0FF)
+        // Condition: Rapid thermal drop (Temp decreasing toward <35°C) OR Cryo skill deployed.
+        val isCryoSkillActive = _techCrew.value.any { it.id == "crew_1" && it.isActiveAbilityRunning } || simulatedTempDelta < -1.0f
+        val isRapidThermalDrop = (tempDropRate >= 0.10f && temperatureC < 35.0f)
+        val isCoolingCondition = isRapidThermalDrop || isCryoSkillActive
+
+        // 4. DEEP SLEEP / HIBERNATION (Night Purple #7C4DFF)
+        // Condition: Screen OFF + Low idle current draw (Current <= 300 mA) OR Overnight 80-85% trickling.
+        val isLowIdleCurrent = abs(currentMa) <= 350
+        val isOvernightTrickle = isCharging && percent in 80..85 && abs(currentMa) <= 400
+        val isDeepSleepCondition = (!isScreenInteractive && isLowIdleCurrent) || isOvernightTrickle || (!isCharging && isLowIdleCurrent && temperatureC < 32f)
+
+        // Auto-Trigger Resolution based on real-time sensor hierarchy
+        val sensorEvaluatedState = when {
+            isOverdriveHeatingCondition -> LivingBatteryState.OVERDRIVE_HEATING
+            isCoolingCondition -> LivingBatteryState.COOLING
+            isDeepSleepCondition -> LivingBatteryState.DEEP_SLEEP
+            isEnergyStoringCondition -> LivingBatteryState.ENERGY_STORING
             isCharging -> LivingBatteryState.ENERGY_STORING
-            abs(currentMa) < 200 -> LivingBatteryState.DEEP_SLEEP
+            abs(currentMa) <= 350 -> LivingBatteryState.DEEP_SLEEP
+            temperatureC < 30.0f -> LivingBatteryState.COOLING
             else -> LivingBatteryState.ENERGY_STORING
+        }
+
+        // Apply automatic real-time sensor detection (or manual preview when explicitly toggled)
+        val livingState = if (_isAutoSensorMode.value) {
+            sensorEvaluatedState
+        } else {
+            manualStateOverride ?: sensorEvaluatedState
         }
 
         val estimatedMin = if (isCharging) {
@@ -348,11 +385,24 @@ class BatteryMonitorRepository(
     }
 
     fun setLivingBatteryState(state: LivingBatteryState?) {
-        manualStateOverride = state
-        if (state == LivingBatteryState.OVERDRIVE_HEATING) {
-            simulatedTempDelta = 12.5f
-        } else if (state == LivingBatteryState.COOLING) {
-            simulatedTempDelta = -6.0f
+        if (state == null) {
+            _isAutoSensorMode.value = true
+            manualStateOverride = null
+        } else {
+            _isAutoSensorMode.value = false
+            manualStateOverride = state
+            if (state == LivingBatteryState.OVERDRIVE_HEATING) {
+                simulatedTempDelta = 12.5f
+            } else if (state == LivingBatteryState.COOLING) {
+                simulatedTempDelta = -6.0f
+            }
+        }
+    }
+
+    fun setAutoSensorMode(auto: Boolean) {
+        _isAutoSensorMode.value = auto
+        if (auto) {
+            manualStateOverride = null
         }
     }
 
@@ -362,7 +412,7 @@ class BatteryMonitorRepository(
         if (index == -1) return
 
         val member = crewList[index]
-        if (member.cooldownRemainingSec > 0) return
+        if (!member.isUnlocked || member.cooldownRemainingSec > 0) return
 
         // Dispatch ability effect
         when (member.id) {
@@ -407,7 +457,7 @@ class BatteryMonitorRepository(
         val currentEgg = _eggData.value
         _eggData.value = currentEgg.copy(
             incubationProgress = 0.05f,
-            currentXP = 100,
+            currentXP = 50,
             hatchedList = listOf(companion) + currentEgg.hatchedList
         )
         addManualSessionLog("Cyber Egg Hatched!", "Discovered: ${companion.name} (${companion.rarity}).", companion.perk, "charge")
@@ -417,20 +467,84 @@ class BatteryMonitorRepository(
     fun addCumulativeMah(addedMah: Long) {
         val current = _prizeRoadData.value
         val newMah = (current.cumulativeMah + addedMah).coerceAtMost(10_000_000L)
-        val newLevel = (newMah / 10_000L).toInt().coerceIn(1, 1000)
+        val newLevel = ((newMah / 10_000L).toInt() + 1).coerceIn(1, 1000)
+        val previousLevel = current.currentLevel
+
+        val newTitle = when {
+            newLevel >= 500 -> "Quantum Matrix Overlord"
+            newLevel >= 250 -> "Cryo Superconductor Master"
+            newLevel >= 100 -> "Volt Grandmaster"
+            newLevel >= 50 -> "High-Voltage Specialist"
+            newLevel >= 25 -> "Lithium Engineer"
+            newLevel >= 10 -> "Electrolyte Guardian"
+            newLevel >= 5 -> "Energy Technician"
+            else -> "Cadet Recruit"
+        }
 
         _prizeRoadData.value = current.copy(
             cumulativeMah = newMah,
-            currentLevel = newLevel
+            currentLevel = newLevel,
+            activeTitle = newTitle
         )
+
+        // Level up rewards: unlock shields and recruit specialist crew!
+        if (newLevel > previousLevel) {
+            checkLevelProgressionRewards(previousLevel, newLevel)
+        }
+    }
+
+    private fun checkLevelProgressionRewards(oldLevel: Int, newLevel: Int) {
+        // Unlock Shields as player levels up
+        val currentStreak = _streakData.value
+        val newMaxShields = when {
+            newLevel >= 50 -> 4
+            newLevel >= 25 -> 3
+            newLevel >= 10 -> 2
+            newLevel >= 5 -> 1
+            else -> 0
+        }
+        if (newMaxShields > currentStreak.maxShields) {
+            val added = newMaxShields - currentStreak.maxShields
+            _streakData.value = currentStreak.copy(
+                maxShields = newMaxShields,
+                shieldsAvailable = currentStreak.shieldsAvailable + added
+            )
+            addManualSessionLog("Shield Capacity Unlocked!", "Earned +$added Battery Health Shield by reaching Level $newLevel.", "+$added Shield", "check")
+        }
+
+        // Unlock Tech Crew Specialists as player levels up
+        _techCrew.value = _techCrew.value.map { member ->
+            if (!member.isUnlocked && newLevel >= member.unlockLevel) {
+                addManualSessionLog("Specialist Recruited!", "${member.name} (${member.title}) unlocked at Level $newLevel.", "Recruited", "check")
+                member.copy(isUnlocked = true)
+            } else {
+                member
+            }
+        }
     }
 
     fun claimMilestone(level: Int) {
         val current = _prizeRoadData.value
+        if (current.claimedMilestones.contains(level)) return
+
         _prizeRoadData.value = current.copy(
             claimedMilestones = current.claimedMilestones + level
         )
-        addManualSessionLog("Prize Road Milestone Claimed", "Claimed Level $level Milestone Cache.", "Level $level", "check")
+
+        if (level % 10 == 0) {
+            val s = _streakData.value
+            _streakData.value = s.copy(
+                maxShields = (s.maxShields + 1).coerceAtMost(5),
+                shieldsAvailable = (s.shieldsAvailable + 1).coerceAtMost(5)
+            )
+        }
+
+        val egg = _eggData.value
+        val newXp = egg.currentXP + 500
+        val progress = (newXp.toFloat() / egg.xpToHatch).coerceIn(0f, 1f)
+        _eggData.value = egg.copy(currentXP = newXp, incubationProgress = progress)
+
+        addManualSessionLog("Milestone Tier #$level Claimed", "Claimed Level $level Milestone Cache: +500 Egg XP.", "Level $level", "check")
     }
 
     fun repairShield() {

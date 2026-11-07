@@ -54,6 +54,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val selectedTab by viewModel.selectedTab.collectAsState()
     val themeConfig by viewModel.themeConfig.collectAsState()
     val isSettingsOpen by viewModel.isSettingsMenuOpen.collectAsState()
+    val isAutoSensorMode by viewModel.isAutoSensorMode.collectAsState()
 
     val isDark = themeConfig.isDarkMode
 
@@ -160,12 +161,11 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 telemetry = telemetry,
                                 voltageHistory = voltageHistory,
                                 currentHistory = currentHistory,
-                                prizeRoadData = prizeRoadData,
                                 themeConfig = themeConfig,
+                                prizeRoadData = prizeRoadData,
+                                isAutoSensorMode = isAutoSensorMode,
                                 onSelectLivingState = { viewModel.selectLivingState(it) },
-                                onTriggerEmergencyCooling = { viewModel.triggerEmergencyCooling() },
-                                onAddSimulatedMah = { viewModel.addCumulativeMah(it) },
-                                onNavigateToPage = { /* handled by tab selection */ }
+                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.PRIZE_ROAD) }
                             )
                             NavigationTab.STREAKS -> Page2StreaksAndEggScreen(
                                 streakData = streakData,

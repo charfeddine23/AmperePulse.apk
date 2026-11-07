@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Engineering
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -216,8 +217,32 @@ fun TechCrewCard(
                     )
                 }
 
-                // Active / Ready Badge
-                if (isActive) {
+                // Active / Ready / Locked Badge
+                if (!member.isUnlocked) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Locked",
+                                tint = TextSlate,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LOCKED • LVL ${member.unlockLevel}",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                color = TextSlate
+                            )
+                        }
+                    }
+                } else if (isActive) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
@@ -306,7 +331,7 @@ fun TechCrewCard(
             // Action Deploy Button (Tactile)
             Button(
                 onClick = onDeploy,
-                enabled = !isCoolingDown && !isActive,
+                enabled = member.isUnlocked && !isCoolingDown && !isActive,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = member.primaryColor,
                     contentColor = Color.White,
@@ -319,18 +344,33 @@ fun TechCrewCard(
                     .height(42.dp)
                     .testTag("btn_deploy_${member.id}")
             ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (isActive) "UNIT CURRENTLY ACTIVE" else if (isCoolingDown) "RECHARGING MATRIX..." else "DEPLOY ${member.abilityName.uppercase()}",
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
+                if (!member.isUnlocked) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "UNLOCKED AT LEVEL ${member.unlockLevel} ON PRIZE ROAD",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isActive) "UNIT CURRENTLY ACTIVE" else if (isCoolingDown) "RECHARGING MATRIX..." else "DEPLOY ${member.abilityName.uppercase()}",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
     }

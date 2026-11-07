@@ -116,13 +116,13 @@ data class BatteryTelemetry(
 )
 
 data class StreakData(
-    val currentStreakDays: Int = 14,
-    val bestStreakDays: Int = 28,
-    val shieldsAvailable: Int = 3,
-    val maxShields: Int = 3,
-    val todayComplianceRate: Float = 0.94f,
-    val healthyChargeMinutesToday: Int = 145,
-    val optimalTempScore: Int = 98,
+    val currentStreakDays: Int = 0,
+    val bestStreakDays: Int = 0,
+    val shieldsAvailable: Int = 0,
+    val maxShields: Int = 0, // Starts at 0 shields! Unlocked as you level up (Level 5, 10, 25, 50)
+    val todayComplianceRate: Float = 0.0f,
+    val healthyChargeMinutesToday: Int = 0,
+    val optimalTempScore: Int = 100,
     val lastShieldUsedDate: String? = null
 )
 
@@ -136,15 +136,11 @@ data class HatchedCompanion(
 
 data class CyberEggData(
     val eggName: String = "Organic Neo Core Egg",
-    val incubationProgress: Float = 0.78f,
+    val incubationProgress: Float = 0.0f,
     val isIncubating: Boolean = true,
-    val currentXP: Int = 1840,
-    val xpToHatch: Int = 2200,
-    val hatchedList: List<HatchedCompanion> = listOf(
-        HatchedCompanion("1", "Cryo Sprite V1", "Rare", "+15% Cooling Velocity", TactileCyan),
-        HatchedCompanion("2", "Volt Phantom", "Epic", "-10% Standby Drain", TactileViolet),
-        HatchedCompanion("3", "Emerald Drake", "Legendary", "Auto-recharges 1 Shield daily", TactileGreen)
-    )
+    val currentXP: Int = 0,
+    val xpToHatch: Int = 1000,
+    val hatchedList: List<HatchedCompanion> = emptyList() // Clean zero companions; hatched via gameplay!
 )
 
 data class PrizeNode(
@@ -158,11 +154,11 @@ data class PrizeNode(
 )
 
 data class PrizeRoadData(
-    val cumulativeMah: Long = 1845200L,
-    val currentLevel: Int = 184,
+    val cumulativeMah: Long = 0L,
+    val currentLevel: Int = 1,
     val maxLevel: Int = 1000,
-    val claimedMilestones: Set<Int> = setOf(5, 10, 15, 20, 25, 50, 75, 100, 150),
-    val activeTitle: String = "Volt Grandmaster"
+    val claimedMilestones: Set<Int> = emptySet(), // Starts at zero claimed milestones!
+    val activeTitle: String = "Cadet Recruit"
 )
 
 data class TechCrewMember(
@@ -176,7 +172,9 @@ data class TechCrewMember(
     val cooldownTotalSec: Int = 60,
     val cooldownRemainingSec: Int = 0,
     val isActiveAbilityRunning: Boolean = false,
-    val activeSecondsRemaining: Int = 0
+    val activeSecondsRemaining: Int = 0,
+    val unlockLevel: Int = 1,
+    val isUnlocked: Boolean = false
 )
 
 data class GlassThemeConfig(

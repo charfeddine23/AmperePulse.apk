@@ -256,67 +256,107 @@ fun Page2StreaksAndEggScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 3 Shield Icons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        for (i in 1..streakData.maxShields) {
-                            val isActive = i <= streakData.shieldsAvailable
-                            val cardBg = when {
-                                isActive -> Color(0xFFFFB800).copy(alpha = if (isDark) 0.22f else 0.12f)
-                                isDark -> Color(0xFF1E293B)
-                                else -> Color(0xFFFFFFFF)
-                            }
-                            val borderCol = if (isActive) Color(0xFFFFB800) else if (isDark) Color(0x33475569) else Color(0x4DE2E8F0)
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .background(cardBg)
-                                    .border(1.dp, borderCol, RoundedCornerShape(14.dp))
-                                    .padding(vertical = 12.dp),
-                                contentAlignment = Alignment.Center
+                    // Shield Slots (or Locked State if 0 unlocked)
+                    if (streakData.maxShields == 0) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF8FAFC))
+                                .border(1.dp, if (isDark) Color(0x33475569) else Color(0x33CBD5E1), RoundedCornerShape(14.dp))
+                                .padding(14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
                             ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        imageVector = Icons.Default.Security,
-                                        contentDescription = "Shield $i",
-                                        tint = if (isActive) Color(0xFFFFB800) else TextSlate,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "Shield Locked",
+                                    tint = TextSlate,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
                                     Text(
-                                        text = if (isActive) "SHIELD $i: ACTIVE" else "EXPENDED",
+                                        text = "0 SHIELDS UNLOCKED • EARN AT LEVEL 5",
                                         fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = if (isDark) TextWhite else TextCharcoal
+                                    )
+                                    Text(
+                                        text = "Shields unlock automatically on the Prize Road as you level up.",
+                                        fontFamily = PlusJakartaSansFontFamily,
                                         fontSize = 10.sp,
-                                        color = if (isActive) textColor else TextSlate
+                                        color = TextSlate
                                     )
                                 }
                             }
                         }
-                    }
-
-                    if (streakData.shieldsAvailable < streakData.maxShields) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.End)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFFFFB800).copy(alpha = if (isDark) 0.25f else 0.15f))
-                                .border(1.dp, Color(0xFFFFB800), RoundedCornerShape(10.dp))
-                                .clickable { onRepairShield() }
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Text(
-                                text = "RECHARGE 1 SHIELD",
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = Color(0xFFFFB800)
-                            )
+                            for (i in 1..streakData.maxShields) {
+                                val isActive = i <= streakData.shieldsAvailable
+                                val cardBg = when {
+                                    isActive -> Color(0xFFFFB800).copy(alpha = if (isDark) 0.22f else 0.12f)
+                                    isDark -> Color(0xFF1E293B)
+                                    else -> Color(0xFFFFFFFF)
+                                }
+                                val borderCol = if (isActive) Color(0xFFFFB800) else if (isDark) Color(0x33475569) else Color(0x4DE2E8F0)
+
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .background(cardBg)
+                                        .border(1.dp, borderCol, RoundedCornerShape(14.dp))
+                                        .padding(vertical = 12.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(
+                                            imageVector = Icons.Default.Security,
+                                            contentDescription = "Shield $i",
+                                            tint = if (isActive) Color(0xFFFFB800) else TextSlate,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = if (isActive) "SHIELD $i: ACTIVE" else "EXPENDED",
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp,
+                                            color = if (isActive) textColor else TextSlate
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (streakData.shieldsAvailable < streakData.maxShields) {
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.End)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color(0xFFFFB800).copy(alpha = if (isDark) 0.25f else 0.15f))
+                                    .border(1.dp, Color(0xFFFFB800), RoundedCornerShape(10.dp))
+                                    .clickable { onRepairShield() }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "RECHARGE 1 SHIELD",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFFFFB800)
+                                )
+                            }
                         }
                     }
                 }
@@ -444,39 +484,19 @@ fun Page2StreaksAndEggScreen(
                             )
                         }
                     } else {
-                        // Info & Boost Pill
+                        // Info Row
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "+5 XP/min while charging on healthy AC wall adapter.",
+                                text = "Incubation matrix advances during healthy AC charging sessions.",
                                 fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 10.sp,
+                                fontSize = 11.sp,
                                 color = TextSlate,
                                 modifier = Modifier.weight(1f)
                             )
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
-                                    .border(1.dp, accentColor, RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        val comp = onHatchEgg()
-                                        newlyHatchedCompanion = comp
-                                        showHatchCelebration = true
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Text(
-                                    text = "FAST-FORWARD HATCH",
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    color = accentColor
-                                )
-                            }
                         }
                     }
                 }
@@ -589,7 +609,36 @@ fun Page2StreaksAndEggScreen(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    eggData.hatchedList.forEach { comp ->
+                    if (eggData.hatchedList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isDark) Color(0xFF1E293B) else Color(0xFFF8FAFC))
+                                .border(1.dp, if (isDark) Color(0x33475569) else Color(0x33CBD5E1), RoundedCornerShape(12.dp))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "NO CYBER COMPANIONS YET",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = if (isDark) TextWhite else TextCharcoal
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Incubate your Cyber Egg to 100% via healthy charging to hatch and collect your first legendary crew companion.",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 11.sp,
+                                    color = TextSlate,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    } else {
+                        eggData.hatchedList.forEach { comp ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -637,6 +686,7 @@ fun Page2StreaksAndEggScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }
