@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -20,16 +22,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.data.TelemetryPoint
-import com.example.ui.theme.TactileGreen
 import com.example.ui.theme.TactileRoyalBlue
+import java.util.Locale
 
 /**
- * Compact Tactile Sparkline for Neumorphic Metric Cards
+ * Ultra-Optimized 90 FPS Tactile Sparkline for Neumorphic Metric Cards.
+ * Reuses internal Path allocations and renders hardware-accelerated curves.
  */
 @Composable
 fun MetricSparkline(
@@ -42,19 +47,24 @@ fun MetricSparkline(
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "sparklinePulse")
     val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
+        initialValue = 0.45f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
+            animation = tween(750, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "sparklineAlpha"
     )
 
+    // Pre-allocate paths once per composable instance to prevent GC churn at 90Hz
+    val strokePath = remember { Path() }
+    val fillPath = remember { Path() }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(heightDp)
+            .graphicsLayer { clip = false }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             if (points.size < 2) return@Canvas
@@ -62,52 +72,53 @@ fun MetricSparkline(
             val w = size.width
             val h = size.height
 
-            val minVal = points.minOf { it.value }
-            val maxVal = points.maxOf { it.value }
+            var minVal = Float.MAX_VALUE
+            var maxVal = -Float.MAX_VALUE
+            for (i in points.indices) {
+                val v = points[i].value
+                if (v < minVal) minVal = v
+                if (v > maxVal) maxVal = v
+            }
             val range = (maxVal - minVal).coerceAtLeast(0.001f)
 
-            val coords = points.mapIndexed { index, pt ->
-                val x = (index.toFloat() / (points.size - 1)) * w
-                val normalizedY = (pt.value - minVal) / range
-                val y = h - (normalizedY * (h * 0.72f) + h * 0.14f)
-                Offset(x, y)
+            strokePath.reset()
+            fillPath.reset()
+
+            val stepX = w / (points.size - 1).coerceAtLeast(1)
+            var prevX = 0f
+            var prevY = h - (((points[0].value - minVal) / range) * (h * 0.72f) + h * 0.14f)
+
+            strokePath.moveTo(prevX, prevY)
+            fillPath.moveTo(prevX, h)
+            fillPath.lineTo(prevX, prevY)
+
+            for (i in 1 until points.size) {
+                val currX = i * stepX
+                val normalizedY = (points[i].value - minVal) / range
+                val currY = h - (normalizedY * (h * 0.72f) + h * 0.14f)
+
+                val cx1 = prevX + (currX - prevX) / 2f
+                val cy1 = prevY
+                val cx2 = prevX + (currX - prevX) / 2f
+                val cy2 = currY
+
+                strokePath.cubicTo(cx1, cy1, cx2, cy2, currX, currY)
+                fillPath.cubicTo(cx1, cy1, cx2, cy2, currX, currY)
+
+                prevX = currX
+                prevY = currY
             }
 
-            val strokePath = Path()
-            val fillPath = Path()
-
-            strokePath.moveTo(coords.first().x, coords.first().y)
-            fillPath.moveTo(coords.first().x, h)
-            fillPath.lineTo(coords.first().x, coords.first().y)
-
-            for (i in 0 until coords.size - 1) {
-                val p0 = coords[i]
-                val p1 = coords[i + 1]
-                val controlPoint1 = Offset(p0.x + (p1.x - p0.x) / 2f, p0.y)
-                val controlPoint2 = Offset(p0.x + (p1.x - p0.x) / 2f, p1.y)
-
-                strokePath.cubicTo(
-                    controlPoint1.x, controlPoint1.y,
-                    controlPoint2.x, controlPoint2.y,
-                    p1.x, p1.y
-                )
-                fillPath.cubicTo(
-                    controlPoint1.x, controlPoint1.y,
-                    controlPoint2.x, controlPoint2.y,
-                    p1.x, p1.y
-                )
-            }
-
-            fillPath.lineTo(coords.last().x, h)
+            fillPath.lineTo(prevX, h)
             fillPath.close()
 
-            // Soft translucent gradient fill under curve
+            // Translucent gradient underfill
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        lineColor.copy(alpha = if (isDarkMode) 0.28f else 0.20f),
-                        lineColor.copy(alpha = 0.04f),
+                        lineColor.copy(alpha = if (isDarkMode) 0.32f * glowIntensity else 0.22f * glowIntensity),
+                        lineColor.copy(alpha = 0.03f),
                         Color.Transparent
                     ),
                     startY = 0f,
@@ -115,31 +126,41 @@ fun MetricSparkline(
                 )
             )
 
-            // Sharp foreground stroke
+            // Outer soft bloom stroke
+            drawPath(
+                path = strokePath,
+                color = lineColor.copy(alpha = if (isDarkMode) 0.35f else 0.20f),
+                style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Sharp crisp foreground stroke
             drawPath(
                 path = strokePath,
                 color = lineColor,
-                style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                style = Stroke(width = 1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // Head tracking dot
-            val lastPoint = coords.last()
+            // Real-time leading tracking beacon
+            val lastX = prevX
+            val lastY = prevY
+
             drawCircle(
-                color = lineColor.copy(alpha = pulseAlpha * 0.35f),
+                color = lineColor.copy(alpha = pulseAlpha * 0.4f),
                 radius = 5.dp.toPx(),
-                center = lastPoint
+                center = Offset(lastX, lastY)
             )
             drawCircle(
                 color = Color.White,
                 radius = 2.dp.toPx(),
-                center = lastPoint
+                center = Offset(lastX, lastY)
             )
         }
     }
 }
 
 /**
- * Detailed Waveform Graph for Oscilloscope & History
+ * 90 FPS Oscilloscope Waveform Graph with Live Phosphor Scanline,
+ * Dual-Layer Bloom Stroke, Dynamic Grid, and Telemetry Peak/Valley Trackers.
  */
 @Composable
 fun DetailedWaveformGraph(
@@ -149,80 +170,117 @@ fun DetailedWaveformGraph(
     isDarkMode: Boolean = false,
     glowIntensity: Float = 0.75f,
     heightDp: Dp = 160.dp,
-    showGrid: Boolean = true
+    showGrid: Boolean = true,
+    showScanline: Boolean = true,
+    unitSymbol: String = ""
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulseHead")
-    val headPulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.35f,
+    val infiniteTransition = rememberInfiniteTransition(label = "oscilloscopeVFX")
+
+    // 90 FPS Laser Sweep Beam traveling across the display
+    val scanlineFraction by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
+            animation = tween(2400, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "scanlineFrac"
+    )
+
+    // Pulsing head beacon scale
+    val beaconPulse by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "headPulse"
+        label = "beaconPulse"
     )
+
+    // Reusable Path instances to eliminate GC overhead at 90Hz
+    val strokePath = remember { Path() }
+    val fillPath = remember { Path() }
+    val gridPath = remember { Path() }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(heightDp)
+            .graphicsLayer { clip = false }
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
 
             if (showGrid) {
-                drawTactileGridLines(w, h, isDarkMode)
+                drawOptimizedOscilloscopeGrid(gridPath, w, h, isDarkMode)
             }
 
             if (points.size < 2) return@Canvas
 
-            val minVal = points.minOf { it.value }
-            val maxVal = points.maxOf { it.value }
+            var minVal = Float.MAX_VALUE
+            var maxVal = -Float.MAX_VALUE
+            var minIdx = 0
+            var maxIdx = 0
+
+            for (i in points.indices) {
+                val v = points[i].value
+                if (v < minVal) {
+                    minVal = v
+                    minIdx = i
+                }
+                if (v > maxVal) {
+                    maxVal = v
+                    maxIdx = i
+                }
+            }
             val range = (maxVal - minVal).coerceAtLeast(0.001f)
 
-            val coords = points.mapIndexed { index, pt ->
-                val x = (index.toFloat() / (points.size - 1)) * w
-                val normalizedY = (pt.value - minVal) / range
-                val y = h - (normalizedY * (h * 0.70f) + h * 0.15f)
-                Offset(x, y)
+            strokePath.reset()
+            fillPath.reset()
+
+            val stepX = w / (points.size - 1).coerceAtLeast(1)
+            var prevX = 0f
+            var prevY = h - (((points[0].value - minVal) / range) * (h * 0.68f) + h * 0.16f)
+
+            strokePath.moveTo(prevX, prevY)
+            fillPath.moveTo(prevX, h)
+            fillPath.lineTo(prevX, prevY)
+
+            var minCoord = Offset(prevX, prevY)
+            var maxCoord = Offset(prevX, prevY)
+
+            for (i in 1 until points.size) {
+                val currX = i * stepX
+                val normalizedY = (points[i].value - minVal) / range
+                val currY = h - (normalizedY * (h * 0.68f) + h * 0.16f)
+
+                if (i == minIdx) minCoord = Offset(currX, currY)
+                if (i == maxIdx) maxCoord = Offset(currX, currY)
+
+                val cx1 = prevX + (currX - prevX) / 2f
+                val cy1 = prevY
+                val cx2 = prevX + (currX - prevX) / 2f
+                val cy2 = currY
+
+                strokePath.cubicTo(cx1, cy1, cx2, cy2, currX, currY)
+                fillPath.cubicTo(cx1, cy1, cx2, cy2, currX, currY)
+
+                prevX = currX
+                prevY = currY
             }
 
-            val strokePath = Path()
-            val fillPath = Path()
-
-            strokePath.moveTo(coords.first().x, coords.first().y)
-            fillPath.moveTo(coords.first().x, h)
-            fillPath.lineTo(coords.first().x, coords.first().y)
-
-            for (i in 0 until coords.size - 1) {
-                val p0 = coords[i]
-                val p1 = coords[i + 1]
-                val controlPoint1 = Offset(p0.x + (p1.x - p0.x) / 2f, p0.y)
-                val controlPoint2 = Offset(p0.x + (p1.x - p0.x) / 2f, p1.y)
-
-                strokePath.cubicTo(
-                    controlPoint1.x, controlPoint1.y,
-                    controlPoint2.x, controlPoint2.y,
-                    p1.x, p1.y
-                )
-                fillPath.cubicTo(
-                    controlPoint1.x, controlPoint1.y,
-                    controlPoint2.x, controlPoint2.y,
-                    p1.x, p1.y
-                )
-            }
-
-            fillPath.lineTo(coords.last().x, h)
+            fillPath.lineTo(prevX, h)
             fillPath.close()
 
-            // Translucent gradient fill
+            // 1. Luminous Gradient Underfill with Soft Tactile Fade
             drawPath(
                 path = fillPath,
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        lineColor.copy(alpha = if (isDarkMode) 0.32f else 0.22f),
-                        lineColor.copy(alpha = 0.05f),
+                        lineColor.copy(alpha = if (isDarkMode) 0.36f * glowIntensity else 0.24f * glowIntensity),
+                        lineColor.copy(alpha = 0.08f),
                         Color.Transparent
                     ),
                     startY = 0f,
@@ -230,50 +288,117 @@ fun DetailedWaveformGraph(
                 )
             )
 
-            // Sharp line stroke
+            // 2. Wide Glow Bloom Stroke (creates the 90 FPS neon/glass luminescence)
+            drawPath(
+                path = strokePath,
+                color = lineColor.copy(alpha = if (isDarkMode) 0.32f else 0.18f),
+                style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // 3. Crisp High-Precision Center Stroke
             drawPath(
                 path = strokePath,
                 color = lineColor,
-                style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round)
+                style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
             )
 
-            // Live telemetry tracker head
-            val lastPoint = coords.last()
+            // 4. Oscilloscope Phosphor Scanline Laser Sweep
+            if (showScanline) {
+                val scanX = scanlineFraction * w
+                val beamWidth = 24.dp.toPx()
+
+                // Phosphor decay trail behind the laser sweep
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            lineColor.copy(alpha = if (isDarkMode) 0.18f else 0.10f),
+                            lineColor.copy(alpha = if (isDarkMode) 0.38f else 0.22f),
+                            Color.Transparent
+                        ),
+                        startX = (scanX - beamWidth).coerceAtLeast(0f),
+                        endX = (scanX + beamWidth * 0.3f).coerceAtMost(w)
+                    ),
+                    topLeft = Offset((scanX - beamWidth).coerceAtLeast(0f), 0f),
+                    size = androidx.compose.ui.geometry.Size(beamWidth * 1.3f, h)
+                )
+
+                // Laser sweep vertical needle line
+                drawLine(
+                    color = Color.White.copy(alpha = if (isDarkMode) 0.75f else 0.55f),
+                    start = Offset(scanX, 0f),
+                    end = Offset(scanX, h),
+                    strokeWidth = 1.2.dp.toPx()
+                )
+            }
+
+            // 5. Min / Max Telemetry Markers
+            // Valley Marker (Min)
             drawCircle(
-                color = lineColor.copy(alpha = 0.3f),
-                radius = 7.dp.toPx() * headPulseScale,
-                center = lastPoint
+                color = Color(0xFF64748B).copy(alpha = 0.5f),
+                radius = 3.dp.toPx(),
+                center = minCoord
             )
+            // Peak Marker (Max)
             drawCircle(
-                color = lineColor,
+                color = lineColor.copy(alpha = 0.6f),
                 radius = 4.dp.toPx(),
-                center = lastPoint
+                center = maxCoord
             )
             drawCircle(
                 color = Color.White,
                 radius = 2.dp.toPx(),
-                center = lastPoint
+                center = maxCoord
+            )
+
+            // 6. Live Telemetry Head Tracking Beacon (at the latest live reading)
+            val headOffset = Offset(prevX, prevY)
+            drawCircle(
+                color = lineColor.copy(alpha = 0.25f),
+                radius = 9.dp.toPx() * beaconPulse,
+                center = headOffset
+            )
+            drawCircle(
+                color = lineColor,
+                radius = 4.5.dp.toPx(),
+                center = headOffset
+            )
+            drawCircle(
+                color = Color.White,
+                radius = 2.2.dp.toPx(),
+                center = headOffset
             )
         }
     }
 }
 
-private fun DrawScope.drawTactileGridLines(width: Float, height: Float, isDarkMode: Boolean) {
-    val horizontalDivisions = 4
-    val gridColor = if (isDarkMode) Color(0x24475569) else Color(0x2EE2E8F0)
-    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+/**
+ * High-Performance Vector Grid for Neumorphic Oscilloscope Screen.
+ */
+private fun DrawScope.drawOptimizedOscilloscopeGrid(
+    path: Path,
+    width: Float,
+    height: Float,
+    isDarkMode: Boolean
+) {
+    val gridColor = if (isDarkMode) Color(0x22475569) else Color(0x33CBD5E1)
+    val dashEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
+    val stroke = Stroke(width = 1.dp.toPx(), pathEffect = dashEffect)
 
+    // Horizontal grid lines (4 horizontal tracks)
+    val horizontalDivisions = 4
     for (i in 1..horizontalDivisions) {
         val y = height * (i.toFloat() / (horizontalDivisions + 1))
         drawLine(
             color = gridColor,
             start = Offset(0f, y),
             end = Offset(width, y),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = dashEffect
+            strokeWidth = stroke.width,
+            pathEffect = stroke.pathEffect
         )
     }
 
+    // Vertical grid divisions (6 time slices)
     val verticalDivisions = 6
     for (i in 1..verticalDivisions) {
         val x = width * (i.toFloat() / (verticalDivisions + 1))
@@ -281,8 +406,8 @@ private fun DrawScope.drawTactileGridLines(width: Float, height: Float, isDarkMo
             color = gridColor,
             start = Offset(x, 0f),
             end = Offset(x, height),
-            strokeWidth = 1.dp.toPx(),
-            pathEffect = dashEffect
+            strokeWidth = stroke.width,
+            pathEffect = stroke.pathEffect
         )
     }
 }
