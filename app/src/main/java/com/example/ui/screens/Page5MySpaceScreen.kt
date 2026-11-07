@@ -63,7 +63,6 @@ import com.example.data.MetricType
 import com.example.data.SessionLog
 import com.example.data.TelemetryPoint
 import com.example.data.TemperatureUnit
-import com.example.ui.components.DetailedWaveformGraph
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.MetricSparkline
 import com.example.ui.components.PulsingNeonDot
@@ -104,7 +103,6 @@ fun Page5MySpaceScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
-    var timebaseWindow by remember { mutableStateOf(30) } // 10, 30, or all
 
     // Optional simulation override for testing all Current Glow VFX states on demand
     var simulatedCurrentOverride by remember { mutableStateOf<Int?>(null) }
@@ -136,21 +134,6 @@ fun Page5MySpaceScreen(
         ),
         label = "ambientGlowColor"
     )
-
-    // Slice history buffer according to selected timebase window
-    val rawActivePoints = when (selectedMetric) {
-        MetricType.VOLTAGE -> voltageHistory
-        MetricType.CURRENT -> currentHistory
-        MetricType.WATTAGE -> wattageHistory
-        MetricType.TEMPERATURE -> temperatureHistory
-    }
-    val activePoints = remember(rawActivePoints, timebaseWindow) {
-        if (timebaseWindow <= 0 || rawActivePoints.size <= timebaseWindow) {
-            rawActivePoints
-        } else {
-            rawActivePoints.takeLast(timebaseWindow)
-        }
-    }
 
     // 90 FPS Breathing Ambient Aura & Particle Shift
     val infiniteTransition = rememberInfiniteTransition(label = "ambientPulse90Fps")
@@ -398,136 +381,6 @@ fun Page5MySpaceScreen(
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-
-            // 90Hz Oscilloscope Waveform Card for Selected Channel
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                LiquidGlassCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    accentColor = animatedAmbientColor,
-                    isDarkMode = isDark,
-                    glowIntensity = glow
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "${selectedMetric.title.uppercase()} 90Hz OSCILLOSCOPE",
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    letterSpacing = 0.5.sp,
-                                    color = textColor
-                                )
-                                Text(
-                                    text = "Touch & Drag to scrub signals • Phosphor Laser Sweep",
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 10.sp,
-                                    color = TextSlate
-                                )
-                            }
-                            PulsingNeonDot(color = animatedAmbientColor, sizeDp = 6.dp)
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Interactive Channel Selector Chips + Timebase controls
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Channel chips
-                            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                MetricType.entries.forEach { metric ->
-                                    val isSelected = metric == selectedMetric
-                                    val chipBg = if (isSelected) {
-                                        animatedAmbientColor.copy(alpha = if (isDark) 0.25f else 0.15f)
-                                    } else {
-                                        if (isDark) Color(0xFF1E293B) else Color(0xFFF1F5F9)
-                                    }
-                                    val borderCol = if (isSelected) animatedAmbientColor else if (isDark) Color(0x33475569) else Color(0x33CBD5E1)
-
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(chipBg)
-                                            .border(1.dp, borderCol, RoundedCornerShape(8.dp))
-                                            .clickable { selectedMetric = metric }
-                                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = metric.name.take(4),
-                                            fontFamily = OutfitFontFamily,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 10.sp,
-                                            color = if (isSelected) animatedAmbientColor else TextSlate
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Timebase window chips (10s, 30s, ALL)
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                listOf(10 to "10s", 30 to "30s", 0 to "ALL").forEach { (sec, label) ->
-                                    val isSelected = timebaseWindow == sec
-                                    Text(
-                                        text = label,
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
-                                        color = if (isSelected) animatedAmbientColor else TextSlate,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(if (isSelected) animatedAmbientColor.copy(alpha = 0.18f) else Color.Transparent)
-                                            .clickable { timebaseWindow = sec }
-                                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Live Waveform Canvas with 90 FPS Laser Sweep & Scrubbing
-                        DetailedWaveformGraph(
-                            points = activePoints,
-                            lineColor = animatedAmbientColor,
-                            isDarkMode = isDark,
-                            glowIntensity = glow,
-                            heightDp = 155.dp,
-                            showGrid = true,
-                            showScanline = true
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Live Min/Max/Current Readout Strip
-                        if (activePoints.isNotEmpty()) {
-                            val minVal = activePoints.minOf { it.value }
-                            val maxVal = activePoints.maxOf { it.value }
-                            val currentVal = activePoints.last().value
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                OscilloscopeStatPill("MIN", String.format(Locale.US, "%.1f", minVal), isDark)
-                                OscilloscopeStatPill("LIVE", String.format(Locale.US, "%.1f", currentVal), isDark, animatedAmbientColor)
-                                OscilloscopeStatPill("PEAK", String.format(Locale.US, "%.1f", maxVal), isDark)
-                                OscilloscopeStatPill("90Hz ENGINE", "LOCKED", isDark, animatedAmbientColor)
-                            }
-                        }
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -907,29 +760,7 @@ fun MySpaceMetricCard(
     }
 }
 
-@Composable
-private fun OscilloscopeStatPill(
-    label: String,
-    value: String,
-    isDarkMode: Boolean,
-    highlightColor: Color? = null
-) {
-    Column {
-        Text(
-            text = label,
-            fontFamily = PlusJakartaSansFontFamily,
-            fontSize = 9.sp,
-            color = TextSlate
-        )
-        Text(
-            text = value,
-            fontFamily = OutfitFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 12.sp,
-            color = highlightColor ?: if (isDarkMode) TextWhite else TextCharcoal
-        )
-    }
-}
+
 
 @Composable
 fun VitalLogItem(

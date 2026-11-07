@@ -295,19 +295,14 @@ fun DetailedWaveformGraph(
 
             var minCoord = Offset(prevX, prevY)
             var maxCoord = Offset(prevX, prevY)
-            val coords = mutableListOf<Offset>()
-            coords.add(Offset(prevX, prevY))
 
             for (i in 1 until points.size) {
                 val currX = i * stepX
                 val normalizedY = (points[i].value - minVal) / range
                 val currY = h - (normalizedY * (h * 0.68f) + h * 0.16f)
 
-                val ptCoord = Offset(currX, currY)
-                coords.add(ptCoord)
-
-                if (i == minIdx) minCoord = ptCoord
-                if (i == maxIdx) maxCoord = ptCoord
+                if (i == minIdx) minCoord = Offset(currX, currY)
+                if (i == maxIdx) maxCoord = Offset(currX, currY)
 
                 val cx1 = prevX + (currX - prevX) / 2f
                 val cy1 = prevY
@@ -420,9 +415,11 @@ fun DetailedWaveformGraph(
 
             // 7. Interactive Scrubbing Cursor OR Live Telemetry Head Tracking Beacon
             val activeScrubIdx = scrubIndex
-            if (activeScrubIdx != null && activeScrubIdx in coords.indices) {
-                val scrubCoord = coords[activeScrubIdx]
-                val scrubPt = points[activeScrubIdx]
+            if (activeScrubIdx != null && activeScrubIdx in points.indices) {
+                val scrubX = activeScrubIdx * stepX
+                val normalizedY = (points[activeScrubIdx].value - minVal) / range
+                val scrubY = h - (normalizedY * (h * 0.68f) + h * 0.16f)
+                val scrubCoord = Offset(scrubX, scrubY)
 
                 // Crosshair vertical cursor
                 val dashCursor = PathEffect.dashPathEffect(floatArrayOf(4f, 4f), 0f)

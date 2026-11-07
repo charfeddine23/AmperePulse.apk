@@ -131,12 +131,12 @@ class BatteryMonitorRepository(
         val wList = mutableListOf<TelemetryPoint>()
         val tList = mutableListOf<TelemetryPoint>()
 
-        for (i in 30 downTo 0) {
-            val t = now - (i * 1500L)
-            val v = 4120f + (sin(i * 0.4) * 45).toFloat() + Random.nextFloat() * 12f
-            val c = 2150f + (sin(i * 0.3) * 180).toFloat() + Random.nextFloat() * 40f
+        for (i in 60 downTo 0) {
+            val t = now - (i * 100L)
+            val v = 4120f + (sin(i * 0.08) * 35).toFloat() + Random.nextFloat() * 6f
+            val c = 2150f + (sin(i * 0.09) * 140).toFloat() + Random.nextFloat() * 15f
             val w = (v / 1000f) * (c / 1000f)
-            val temp = 28.2f + (i * 0.03f) + (sin(i * 0.2) * 0.3).toFloat()
+            val temp = 28.2f + (sin(i * 0.04) * 0.25).toFloat()
 
             vList.add(TelemetryPoint(t, v))
             cList.add(TelemetryPoint(t, c))
@@ -163,21 +163,32 @@ class BatteryMonitorRepository(
         )
     }
 
+    private var subTick = 0
+    private var cachedBatteryStatus: Intent? = null
+
     private fun startPolling() {
         scope.launch(Dispatchers.Default) {
             while (isActive) {
-                readBatteryState()
-                updateEggAndPrizeProgress()
-                updateCrewCooldowns()
-                delay(1000L)
+                if (subTick % 10 == 0 || cachedBatteryStatus == null) {
+                    val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                    cachedBatteryStatus = context.registerReceiver(null, ifilter)
+                }
+
+                readBatteryState(cachedBatteryStatus)
+
+                subTick++
+                if (subTick % 10 == 0) {
+                    updateEggAndPrizeProgress()
+                    updateCrewCooldowns()
+                }
+
+                delay(100L) // Sub-second 100ms streaming updates (10 updates per second)
             }
         }
     }
 
-    private fun readBatteryState() {
+    private fun readBatteryState(batteryStatus: Intent?) {
         simTick++
-        val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        val batteryStatus: Intent? = context.registerReceiver(null, ifilter)
 
         val rawLevel = batteryStatus?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
         val scale = batteryStatus?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
@@ -211,17 +222,17 @@ class BatteryMonitorRepository(
         val baseVoltageMv = if (rawVoltage in 1..15) rawVoltage * 1000 else rawVoltage
 
         val voltageMv = if (baseVoltageMv > 1000) {
-            (baseVoltageMv + (sin(simTick * 0.3) * 15).toInt())
+            (baseVoltageMv + (sin(simTick * 0.08) * 15).toInt())
         } else {
-            4180 + (sin(simTick * 0.3) * 20).toInt()
+            4180 + (sin(simTick * 0.08) * 20).toInt()
         }
 
         val rawTemp = batteryStatus?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 285) ?: 285
         val baseTempC = (rawTemp / 10.0f) + simulatedTempDelta
         val temperatureC = if (baseTempC in 10f..65f) {
-            baseTempC + (sin(simTick * 0.15) * 0.15f).toFloat()
+            baseTempC + (sin(simTick * 0.04) * 0.15f).toFloat()
         } else {
-            (28.5f + simulatedTempDelta + (sin(simTick * 0.15) * 0.2f)).toFloat()
+            (28.5f + simulatedTempDelta + (sin(simTick * 0.04) * 0.2f)).toFloat()
         }
 
         var currentNowUa = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
@@ -229,7 +240,7 @@ class BatteryMonitorRepository(
 
         if (abs(currentMa) < 10) {
             val baseCurrent = if (isCharging) 2250 else -430
-            val oscillation = (sin(simTick * 0.45) * 120).toInt() + Random.nextInt(-25, 25)
+            val oscillation = (sin(simTick * 0.09) * 120).toInt() + Random.nextInt(-10, 10)
             currentMa = baseCurrent + oscillation
         } else if (!isCharging && currentMa > 0) {
             currentMa = -currentMa
@@ -318,7 +329,7 @@ class BatteryMonitorRepository(
 
     private fun appendHistoryPoint(t: BatteryTelemetry) {
         val now = System.currentTimeMillis()
-        val maxPoints = 40
+        val maxPoints = 60
 
         fun append(currentList: List<TelemetryPoint>, newVal: Float): List<TelemetryPoint> {
             val list = currentList.toMutableList()
