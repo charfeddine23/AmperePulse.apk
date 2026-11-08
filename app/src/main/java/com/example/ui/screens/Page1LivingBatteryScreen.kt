@@ -187,42 +187,29 @@ fun Page1LivingBatteryScreen(
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    // Right: Real-time Auto Sensors Indicator / Switch
+                    // Right: Real-time Auto Sensors Indicator
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(
-                                if (isAutoSensorMode)
-                                    TactileGreen.copy(alpha = if (isDark) 0.22f else 0.14f)
-                                else
-                                    Color(0xFFFFAB00).copy(alpha = if (isDark) 0.22f else 0.14f)
-                            )
-                            .border(
-                                1.dp,
-                                if (isAutoSensorMode) TactileGreen.copy(alpha = 0.5f) else Color(0xFFFFAB00).copy(alpha = 0.5f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .clickable {
-                                // Toggling returns to auto real-time sensor detection
-                                onSelectLivingState(null)
-                            }
+                            .background(TactileGreen.copy(alpha = if (isDark) 0.22f else 0.14f))
+                            .border(1.dp, TactileGreen.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = if (isAutoSensorMode) Icons.Default.Sensors else Icons.Default.CheckCircle,
+                                imageVector = Icons.Default.Sensors,
                                 contentDescription = null,
-                                tint = if (isAutoSensorMode) TactileGreen else Color(0xFFFFAB00),
+                                tint = TactileGreen,
                                 modifier = Modifier.size(11.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (isAutoSensorMode) "AUTO ACTIVE" else "RESUME AUTO",
+                                text = "100% AUTO SENSORS",
                                 fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 9.sp,
                                 letterSpacing = 0.3.sp,
-                                color = if (isAutoSensorMode) TactileGreen else Color(0xFFFFAB00)
+                                color = TactileGreen
                             )
                         }
                     }
@@ -254,78 +241,7 @@ fun Page1LivingBatteryScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 3. Interactive 4-State Sensor Mode Preview Buttons
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LivingBatteryState.entries.forEach { st ->
-                val isSelected = st == state
-                val color = st.neonPrimary
-                val btnBg = when {
-                    isSelected -> color.copy(alpha = if (isDark) 0.24f else 0.14f)
-                    isDark -> Color(0xFF1E293B)
-                    else -> Color(0xFFFFFFFF)
-                }
-                val borderCol = when {
-                    isSelected -> color
-                    isDark -> Color(0x33475569)
-                    else -> Color(0x4DE2E8F0)
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(btnBg)
-                        .border(
-                            width = if (isSelected) 1.5.dp else 1.dp,
-                            color = borderCol,
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .clickable {
-                            if (isSelected && !isAutoSensorMode) {
-                                onSelectLivingState(null) // Return to auto
-                            } else {
-                                onSelectLivingState(st)
-                            }
-                        }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = when (st) {
-                                LivingBatteryState.OVERDRIVE_HEATING -> Icons.Default.LocalFireDepartment
-                                LivingBatteryState.COOLING -> Icons.Default.AcUnit
-                                LivingBatteryState.ENERGY_STORING -> Icons.Default.Bolt
-                                LivingBatteryState.DEEP_SLEEP -> Icons.Default.Bedtime
-                            },
-                            contentDescription = st.title,
-                            tint = if (isSelected) color else TextSlate,
-                            modifier = Modifier.size(17.dp)
-                        )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = when (st) {
-                                LivingBatteryState.OVERDRIVE_HEATING -> "HEATING"
-                                LivingBatteryState.COOLING -> "COOLING"
-                                LivingBatteryState.ENERGY_STORING -> "STORING"
-                                LivingBatteryState.DEEP_SLEEP -> "SLEEP"
-                            },
-                            fontFamily = OutfitFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            color = if (isSelected) (if (isDark) TextWhite else TextCharcoal) else TextSlate
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Overdrive Warning Card (if heating condition is active)
         if (state == LivingBatteryState.OVERDRIVE_HEATING) {

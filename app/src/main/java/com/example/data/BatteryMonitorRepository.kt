@@ -133,10 +133,10 @@ class BatteryMonitorRepository(
 
         for (i in 60 downTo 0) {
             val t = now - (i * 100L)
-            val v = 4120f + (sin(i * 0.08) * 35).toFloat() + Random.nextFloat() * 6f
-            val c = 2150f + (sin(i * 0.09) * 140).toFloat() + Random.nextFloat() * 15f
+            val v = 4120f + (sin(i * 0.12) * 35).toFloat()
+            val c = 2150f + (sin(i * 0.10) * 160).toFloat()
             val w = (v / 1000f) * (c / 1000f)
-            val temp = 28.2f + (sin(i * 0.04) * 0.25).toFloat()
+            val temp = 28.2f + (sin(i * 0.06) * 0.35).toFloat()
 
             vList.add(TelemetryPoint(t, v))
             cList.add(TelemetryPoint(t, c))
@@ -222,17 +222,17 @@ class BatteryMonitorRepository(
         val baseVoltageMv = if (rawVoltage in 1..15) rawVoltage * 1000 else rawVoltage
 
         val voltageMv = if (baseVoltageMv > 1000) {
-            (baseVoltageMv + (sin(simTick * 0.08) * 15).toInt())
+            (baseVoltageMv + (sin(simTick * 0.12) * 20).toInt())
         } else {
-            4180 + (sin(simTick * 0.08) * 20).toInt()
+            4180 + (sin(simTick * 0.12) * 25).toInt()
         }
 
         val rawTemp = batteryStatus?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 285) ?: 285
         val baseTempC = (rawTemp / 10.0f) + simulatedTempDelta
         val temperatureC = if (baseTempC in 10f..65f) {
-            baseTempC + (sin(simTick * 0.04) * 0.15f).toFloat()
+            baseTempC + (sin(simTick * 0.06) * 0.25f).toFloat()
         } else {
-            (28.5f + simulatedTempDelta + (sin(simTick * 0.04) * 0.2f)).toFloat()
+            (28.5f + simulatedTempDelta + (sin(simTick * 0.06) * 0.3f)).toFloat()
         }
 
         var currentNowUa = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
@@ -240,7 +240,7 @@ class BatteryMonitorRepository(
 
         if (abs(currentMa) < 10) {
             val baseCurrent = if (isCharging) 2250 else -430
-            val oscillation = (sin(simTick * 0.09) * 120).toInt() + Random.nextInt(-10, 10)
+            val oscillation = (sin(simTick * 0.10) * 150).toInt()
             currentMa = baseCurrent + oscillation
         } else if (!isCharging && currentMa > 0) {
             currentMa = -currentMa

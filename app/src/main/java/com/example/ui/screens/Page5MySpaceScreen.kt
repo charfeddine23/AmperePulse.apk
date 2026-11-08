@@ -103,10 +103,7 @@ fun Page5MySpaceScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
-
-    // Optional simulation override for testing all Current Glow VFX states on demand
-    var simulatedCurrentOverride by remember { mutableStateOf<Int?>(null) }
-    val activeCurrentMa = simulatedCurrentOverride ?: telemetry.currentMa
+    val activeCurrentMa = telemetry.currentMa
 
     // DYNAMIC CURRENT-DRIVEN AMBIENT GLOW (VFX)
     // Bind the background ambient glow layer to live Current (mA) state:
@@ -239,55 +236,6 @@ fun Page5MySpaceScreen(
                     ambientColor = animatedAmbientColor,
                     isDarkMode = isDark
                 )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Interactive Current-Driven Ambient Glow VFX Simulator Chips
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                CurrentVfxTestChip(
-                    label = "🔴 Stress Inflow (+3200mA)",
-                    isSelected = simulatedCurrentOverride == 3200,
-                    chipColor = TactileCoralRed,
-                    isDark = isDark,
-                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 3200) null else 3200 }
-                )
-                CurrentVfxTestChip(
-                    label = "🟢 Safe Flow (+1800mA)",
-                    isSelected = simulatedCurrentOverride == 1800,
-                    chipColor = TactileGreen,
-                    isDark = isDark,
-                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 1800) null else 1800 }
-                )
-                CurrentVfxTestChip(
-                    label = "🔵 Trickle (+200mA)",
-                    isSelected = simulatedCurrentOverride == 200,
-                    chipColor = TactileRoyalBlue,
-                    isDark = isDark,
-                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == 200) null else 200 }
-                )
-                CurrentVfxTestChip(
-                    label = "🟣 High Drain (-900mA)",
-                    isSelected = simulatedCurrentOverride == -900,
-                    chipColor = Color(0xFFA855F7),
-                    isDark = isDark,
-                    onClick = { simulatedCurrentOverride = if (simulatedCurrentOverride == -900) null else -900 }
-                )
-                if (simulatedCurrentOverride != null) {
-                    CurrentVfxTestChip(
-                        label = "⚡ Real Sensor Mode",
-                        isSelected = false,
-                        chipColor = baseAccent,
-                        isDark = isDark,
-                        onClick = { simulatedCurrentOverride = null }
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -514,34 +462,7 @@ private fun CurrentDrivenAmbientGlowBackdrop(
     }
 }
 
-/**
- * Quick-Test Chip for Current-Driven Ambient Glow VFX
- */
-@Composable
-private fun CurrentVfxTestChip(
-    label: String,
-    isSelected: Boolean,
-    chipColor: Color,
-    isDark: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) chipColor.copy(alpha = if (isDark) 0.28f else 0.16f) else if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
-            .border(1.dp, if (isSelected) chipColor else if (isDark) Color(0x33475569) else Color(0x33CBD5E1), RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 5.dp)
-    ) {
-        Text(
-            text = label,
-            fontFamily = OutfitFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            color = if (isSelected) chipColor else if (isDark) TextWhite else TextCharcoal
-        )
-    }
-}
+
 
 /**
  * Animated Electron Flow Velocity VFX Bar.
