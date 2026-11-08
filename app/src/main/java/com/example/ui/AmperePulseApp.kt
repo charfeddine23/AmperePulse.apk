@@ -55,6 +55,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val themeConfig by viewModel.themeConfig.collectAsState()
     val isSettingsOpen by viewModel.isSettingsMenuOpen.collectAsState()
     val isAutoSensorMode by viewModel.isAutoSensorMode.collectAsState()
+    val userAccount by viewModel.userAccount.collectAsState()
 
     val isDark = themeConfig.isDarkMode
 
@@ -193,6 +194,10 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 temperatureHistory = temperatureHistory,
                                 sessionLogs = sessionLogs,
                                 themeConfig = themeConfig,
+                                userAccount = userAccount,
+                                onLinkGoogle = { name, email -> viewModel.linkGoogleAccount(name, email) },
+                                onUnlinkGoogle = { viewModel.unlinkGoogleAccount() },
+                                onUpdateOwnerName = { viewModel.updateOwnerName(it) },
                                 onAddVitalLog = { title, desc, tag, type ->
                                     viewModel.addManualLog(title, desc, tag, type)
                                 }

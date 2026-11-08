@@ -39,6 +39,7 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     val prizeRoadData: StateFlow<PrizeRoadData> = repository.prizeRoadData
     val techCrew: StateFlow<List<TechCrewMember>> = repository.techCrew
     val isAutoSensorMode: StateFlow<Boolean> = repository.isAutoSensorMode
+    val userAccount: StateFlow<com.example.data.UserAccount> = repository.userAccount
 
     private val _selectedTab = MutableStateFlow(NavigationTab.BATTERY)
     val selectedTab: StateFlow<NavigationTab> = _selectedTab.asStateFlow()
@@ -91,5 +92,21 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun addManualLog(title: String, desc: String, statTag: String, type: String) {
         repository.addManualSessionLog(title, desc, statTag, type)
+    }
+
+    fun linkGoogleAccount(ownerName: String = "Charfeddine", email: String = "charfeddineka02@gmail.com") {
+        repository.linkGoogleAccount(ownerName, email)
+    }
+
+    fun unlinkGoogleAccount() {
+        repository.unlinkGoogleAccount()
+    }
+
+    fun updateOwnerName(name: String) {
+        repository.updateOwnerName(name)
+    }
+
+    fun toggleCloudSync(enabled: Boolean) {
+        repository.toggleCloudSync(enabled)
     }
 }

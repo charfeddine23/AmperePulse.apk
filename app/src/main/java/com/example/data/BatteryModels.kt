@@ -219,3 +219,13 @@ data class SessionLog(
     val statTag: String,
     val type: String
 )
+
+data class UserAccount(
+    val isGoogleLinked: Boolean = false,
+    val ownerName: String = "Charfeddine",
+    val email: String = "charfeddineka02@gmail.com",
+    val avatarInitials: String = "CK",
+    val accountTier: String = "Pulse Pioneer",
+    val linkedDate: String? = null,
+    val isCloudSyncActive: Boolean = true
+)

@@ -31,16 +31,35 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,8 +72,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.BatteryTelemetry
@@ -63,6 +85,7 @@ import com.example.data.MetricType
 import com.example.data.SessionLog
 import com.example.data.TelemetryPoint
 import com.example.data.TemperatureUnit
+import com.example.data.UserAccount
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.MetricSparkline
 import com.example.ui.components.PulsingNeonDot
@@ -80,9 +103,9 @@ import kotlin.math.abs
 import kotlin.math.sin
 
 /**
- * PAGE 5: My Space Telemetry Console
+ * PAGE 5: My Space Telemetry Console & Account Center
  * High-performance, silky-smooth 90 FPS real-time charts, oscilloscopes,
- * and dynamic Current-driven ambient glow visual effects (VFX).
+ * User Account with Google Linking, and dynamic Current-driven ambient glow visual effects (VFX).
  */
 @Composable
 fun Page5MySpaceScreen(
@@ -93,6 +116,10 @@ fun Page5MySpaceScreen(
     temperatureHistory: List<TelemetryPoint>,
     sessionLogs: List<SessionLog>,
     themeConfig: GlassThemeConfig,
+    userAccount: UserAccount = UserAccount(),
+    onLinkGoogle: (String, String) -> Unit = { _, _ -> },
+    onUnlinkGoogle: () -> Unit = {},
+    onUpdateOwnerName: (String) -> Unit = {},
     onAddVitalLog: (String, String, String, String) -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -103,6 +130,7 @@ fun Page5MySpaceScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
+    var showGoogleLinkDialog by remember { mutableStateOf(false) }
     val activeCurrentMa = telemetry.currentMa
 
     // DYNAMIC CURRENT-DRIVEN AMBIENT GLOW (VFX)
@@ -165,7 +193,7 @@ fun Page5MySpaceScreen(
                 .padding(bottom = 110.dp)
                 .graphicsLayer { clip = false }
         ) {
-            // Space Header Banner
+            // USER ACCOUNT & GOOGLE LINK BANNER (Replaces MY SPACE TELEMETRY CONSOLE)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,51 +201,155 @@ fun Page5MySpaceScreen(
             ) {
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    accentColor = animatedAmbientColor,
+                    accentColor = if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor,
                     isDarkMode = isDark,
                     glowIntensity = glow
                 ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Left Section: Account Avatar, Status & Google Link Chip
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(42.dp)
+                                        .size(46.dp)
                                         .clip(CircleShape)
-                                        .background(animatedAmbientColor.copy(alpha = if (isDark) 0.22f else 0.12f))
-                                        .border(1.2.dp, animatedAmbientColor, CircleShape),
+                                        .background(
+                                            if (userAccount.isGoogleLinked) {
+                                                TactileGreen.copy(alpha = if (isDark) 0.20f else 0.12f)
+                                            } else {
+                                                animatedAmbientColor.copy(alpha = if (isDark) 0.20f else 0.12f)
+                                            }
+                                        )
+                                        .border(
+                                            1.5.dp,
+                                            if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor.copy(alpha = 0.5f),
+                                            CircleShape
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.QueryStats,
-                                        contentDescription = null,
-                                        tint = animatedAmbientColor,
-                                        modifier = Modifier.size(24.dp)
-                                    )
+                                    if (userAccount.isGoogleLinked) {
+                                        GoogleLogo(sizeDp = 22.dp)
+                                    } else {
+                                        Text(
+                                            text = userAccount.avatarInitials,
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 17.sp,
+                                            color = animatedAmbientColor
+                                        )
+                                    }
                                 }
+
                                 Spacer(modifier = Modifier.width(12.dp))
+
                                 Column {
-                                    Text(
-                                        text = "MY SPACE TELEMETRY CONSOLE",
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        letterSpacing = 0.5.sp,
-                                        color = textColor
-                                    )
-                                    Text(
-                                        text = "90Hz Precision Oscilloscope & Dynamic VFX",
-                                        fontFamily = PlusJakartaSansFontFamily,
-                                        fontSize = 11.sp,
-                                        color = TextSlate
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "حساب المستخدم",
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp,
+                                            color = textColor
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        PulsingNeonDot(
+                                            color = if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor,
+                                            sizeDp = 6.dp
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    // Google Account Link Action Chip
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (userAccount.isGoogleLinked) {
+                                                    TactileGreen.copy(alpha = if (isDark) 0.22f else 0.12f)
+                                                } else {
+                                                    Color(0xFF4285F4).copy(alpha = if (isDark) 0.22f else 0.12f)
+                                                }
+                                            )
+                                            .border(
+                                                1.dp,
+                                                if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.6f) else Color(0xFF4285F4).copy(alpha = 0.5f),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable { showGoogleLinkDialog = true }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            GoogleLogo(sizeDp = 12.dp)
+                                            Spacer(modifier = Modifier.width(5.dp))
+                                            Text(
+                                                text = if (userAccount.isGoogleLinked) "مرتبط بـ Google ✓" else "ربط بحساب Google",
+                                                fontFamily = OutfitFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.sp,
+                                                color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                                            )
+                                        }
+                                    }
                                 }
                             }
-                            PulsingNeonDot(color = animatedAmbientColor, sizeDp = 7.dp)
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            // Right Section: اسم صاحب الحساب (Prominently on the Right Side)
+                            Column(
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    if (userAccount.isGoogleLinked) {
+                                        Icon(
+                                            imageVector = Icons.Default.Verified,
+                                            contentDescription = null,
+                                            tint = TactileGreen,
+                                            modifier = Modifier.size(15.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                    }
+                                    Text(
+                                        text = userAccount.ownerName,
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 16.sp,
+                                        letterSpacing = 0.3.sp,
+                                        color = textColor
+                                    )
+                                }
+
+                                Text(
+                                    text = "صاحب الحساب",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextSlate
+                                )
+
+                                Text(
+                                    text = if (userAccount.isGoogleLinked) userAccount.email else "حساب عتاد محلي",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 9.sp,
+                                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
@@ -401,6 +533,25 @@ fun Page5MySpaceScreen(
                     )
                 }
             }
+        }
+
+        if (showGoogleLinkDialog) {
+            GoogleAccountLinkDialog(
+                userAccount = userAccount,
+                isDarkMode = isDark,
+                onDismiss = { showGoogleLinkDialog = false },
+                onLinkGoogle = { name, email ->
+                    onLinkGoogle(name, email)
+                    showGoogleLinkDialog = false
+                },
+                onUnlinkGoogle = {
+                    onUnlinkGoogle()
+                    showGoogleLinkDialog = false
+                },
+                onUpdateOwnerName = { name ->
+                    onUpdateOwnerName(name)
+                }
+            )
         }
     }
 }
@@ -773,3 +924,406 @@ fun VitalLogItem(
         }
     }
 }
+
+/**
+ * High-Precision Vector Canvas Google Logo (Authentic 4-Color G Symbol).
+ */
+@Composable
+fun GoogleLogo(modifier: Modifier = Modifier, sizeDp: Dp = 18.dp) {
+    Canvas(modifier = modifier.size(sizeDp)) {
+        val w = size.width
+        val h = size.height
+        val strokeWidth = w * 0.22f
+        val inset = strokeWidth / 2f
+        val arcRect = androidx.compose.ui.geometry.Rect(inset, inset, w - inset, h - inset)
+
+        // Blue horizontal crossbar
+        drawLine(
+            color = Color(0xFF4285F4),
+            start = Offset(w * 0.48f, h * 0.5f),
+            end = Offset(w - strokeWidth * 0.2f, h * 0.5f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Square
+        )
+
+        // Red arc (top / top-left)
+        drawArc(
+            color = Color(0xFFEA4335),
+            startAngle = 200f,
+            sweepAngle = 110f,
+            useCenter = false,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+        )
+        // Yellow arc (left / bottom-left)
+        drawArc(
+            color = Color(0xFFFBBC05),
+            startAngle = 120f,
+            sweepAngle = 80f,
+            useCenter = false,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+        )
+        // Green arc (bottom / bottom-right)
+        drawArc(
+            color = Color(0xFF34A853),
+            startAngle = 25f,
+            sweepAngle = 95f,
+            useCenter = false,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+        )
+        // Blue arc (right)
+        drawArc(
+            color = Color(0xFF4285F4),
+            startAngle = 310f,
+            sweepAngle = 75f,
+            useCenter = false,
+            topLeft = arcRect.topLeft,
+            size = arcRect.size,
+            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
+        )
+    }
+}
+
+/**
+ * Interactive Neumorphic Google Account Link & Profile Sync Dialog.
+ */
+@Composable
+fun GoogleAccountLinkDialog(
+    userAccount: UserAccount,
+    isDarkMode: Boolean,
+    onDismiss: () -> Unit,
+    onLinkGoogle: (String, String) -> Unit,
+    onUnlinkGoogle: () -> Unit,
+    onUpdateOwnerName: (String) -> Unit
+) {
+    var ownerNameInput by remember { mutableStateOf(userAccount.ownerName) }
+    val googleEmail = userAccount.email
+
+    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+    val textColor = if (isDarkMode) TextWhite else TextCharcoal
+    val subTextColor = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = cardBg,
+        titleContentColor = textColor,
+        textContentColor = subTextColor,
+        shape = RoundedCornerShape(22.dp),
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFF1F5F9))
+                        .border(1.dp, Color(0xFF4285F4).copy(alpha = 0.5f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    GoogleLogo(sizeDp = 20.dp)
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = if (userAccount.isGoogleLinked) "إدارة حساب Google" else "ربط بحساب Google",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = textColor
+                    )
+                    Text(
+                        text = "Ampere Pulse Cloud & Profile Sync",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.sp,
+                        color = subTextColor
+                    )
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Status Header Card
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(
+                            if (userAccount.isGoogleLinked) {
+                                TactileGreen.copy(alpha = if (isDarkMode) 0.16f else 0.10f)
+                            } else {
+                                Color(0xFF4285F4).copy(alpha = if (isDarkMode) 0.16f else 0.08f)
+                            }
+                        )
+                        .border(
+                            1.dp,
+                            if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.4f) else Color(0xFF4285F4).copy(alpha = 0.35f),
+                            RoundedCornerShape(14.dp)
+                        )
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (userAccount.isGoogleLinked) Icons.Default.CloudDone else Icons.Default.CloudQueue,
+                            contentDescription = null,
+                            tint = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = if (userAccount.isGoogleLinked) "الحساب مرتبط بنجاح ✓" else "حسابك جاهز للربط الفوري",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                            )
+                            Text(
+                                text = if (userAccount.isGoogleLinked) "المزامنة السحابية 24/7 نشطة مع قاعدة البيانات" else "اربط حسابك لتفعيل النسخ الاحتياطي في السحابة",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                color = subTextColor
+                            )
+                        }
+                    }
+                }
+
+                // Name Input
+                Column {
+                    Text(
+                        text = "اسم صاحب الحساب",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = textColor
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = ownerNameInput,
+                        onValueChange = {
+                            ownerNameInput = it
+                            if (userAccount.isGoogleLinked) {
+                                onUpdateOwnerName(it)
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        placeholder = { Text("أدخل اسم صاحب الحساب...") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = TactileRoyalBlue)
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = TactileRoyalBlue,
+                            unfocusedBorderColor = if (isDarkMode) Color(0xFF475569) else Color(0xFFCBD5E1),
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                }
+
+                // Google Account Details Box
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFF8FAFC))
+                        .border(1.dp, if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                        .padding(12.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "حساب Google المرتبط",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 11.sp,
+                                color = subTextColor
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.15f) else Color(0x184285F4))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (userAccount.isGoogleLinked) "ACTIVE" else "READY",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                                )
+                            }
+                        }
+
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            GoogleLogo(sizeDp = 16.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = googleEmail,
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                color = textColor
+                            )
+                        }
+                    }
+                }
+
+                // Cloud Sync Feature Highlights
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "مزايا ربط الحساب:",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = textColor
+                    )
+                    GoogleFeatureBullet(
+                        icon = Icons.Default.Bolt,
+                        tint = TactileGreen,
+                        text = "مزامنة سحابية مستمرة لسجلات الجهد والتيار والحرارة (Room WAL)",
+                        isDarkMode = isDarkMode
+                    )
+                    GoogleFeatureBullet(
+                        icon = Icons.Default.Verified,
+                        tint = TactileRoyalBlue,
+                        text = "حفظ تقدم بيضة السايبر ومستويات طريق الجائزة في السحابة",
+                        isDarkMode = isDarkMode
+                    )
+                    GoogleFeatureBullet(
+                        icon = Icons.Default.Sync,
+                        tint = Color(0xFFA855F7),
+                        text = "إمكانية استرجاع البيانات فوراً عند تغيير الجهاز أو إعادة تثبيت التطبيق",
+                        isDarkMode = isDarkMode
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (!userAccount.isGoogleLinked) {
+                Button(
+                    onClick = {
+                        onLinkGoogle(ownerNameInput.ifBlank { "Charfeddine" }, googleEmail)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4285F4)
+                    )
+                ) {
+                    GoogleLogo(sizeDp = 16.dp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "تأكيد الربط بحساب Google الآن",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onUnlinkGoogle,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = TactileCoralRed
+                        )
+                    ) {
+                        Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "إلغاء الربط",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            onUpdateOwnerName(ownerNameInput)
+                            onDismiss()
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TactileRoyalBlue
+                        )
+                    ) {
+                        Text(
+                            text = "حفظ وإغلاق",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (!userAccount.isGoogleLinked) {
+                TextButton(onClick = onDismiss) {
+                    Text(
+                        text = "إلغاء",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        color = subTextColor
+                    )
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun GoogleFeatureBullet(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: Color,
+    text: String,
+    isDarkMode: Boolean
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(13.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = text,
+            fontFamily = PlusJakartaSansFontFamily,
+            fontSize = 10.sp,
+            color = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B),
+            lineHeight = 14.sp
+        )
+    }
+}
+
