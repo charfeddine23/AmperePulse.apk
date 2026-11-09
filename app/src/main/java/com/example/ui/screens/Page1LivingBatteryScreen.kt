@@ -65,6 +65,7 @@ import com.example.data.TelemetryPoint
 import com.example.ui.components.LiquidBatteryRing
 import com.example.ui.components.LiquidGlassCard
 import com.example.ui.components.PulsingNeonDot
+import com.example.ui.components.thermalLiquidGlassBackground
 import com.example.ui.theme.OutfitFontFamily
 import com.example.ui.theme.PlusJakartaSansFontFamily
 import com.example.ui.theme.TactileGreen
@@ -93,7 +94,8 @@ fun Page1LivingBatteryScreen(
     prizeRoadData: PrizeRoadData,
     isAutoSensorMode: Boolean = true,
     onSelectLivingState: (LivingBatteryState?) -> Unit,
-    onNavigateToPrizeRoad: () -> Unit = {}
+    onNavigateToPrizeRoad: () -> Unit = {},
+    onToggleThermalTest: () -> Unit = {}
 ) {
     val scrollState = rememberScrollState()
     val isDark = themeConfig.isDarkMode
@@ -105,6 +107,13 @@ fun Page1LivingBatteryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .thermalLiquidGlassBackground(
+                temperatureC = telemetry.temperatureC,
+                isDarkMode = isDark,
+                glowIntensity = glow,
+                criticalTempThreshold = 40.0f,
+                normalTempThreshold = 34.0f
+            )
             .verticalScroll(scrollState)
             .padding(bottom = 110.dp)
             .graphicsLayer { clip = false }
@@ -313,8 +322,15 @@ fun Page1LivingBatteryScreen(
                 modifier = Modifier.weight(1f),
                 label = "CORE TEMP",
                 value = "${telemetry.temperatureC} °C",
-                color = if (telemetry.temperatureC >= 38f) Color(0xFFFF3D00) else primaryColor,
-                isDarkMode = isDark
+                color = when {
+                    telemetry.temperatureC >= 40f -> Color(0xFFFF3D00)
+                    telemetry.temperatureC >= 38f -> Color(0xFFFF9100)
+                    telemetry.temperatureC <= 34f -> Color(0xFF00B0FF)
+                    else -> primaryColor
+                },
+                isDarkMode = isDark,
+                onClick = onToggleThermalTest,
+                subtext = if (telemetry.temperatureC >= 40f) "STRESS > 40°C" else "COOL BLUE"
             )
         }
 
@@ -641,13 +657,16 @@ private fun QuickMetricNeumorph(
     label: String,
     value: String,
     color: Color,
-    isDarkMode: Boolean
+    isDarkMode: Boolean,
+    onClick: (() -> Unit)? = null,
+    subtext: String? = null
 ) {
     LiquidGlassCard(
         modifier = modifier,
         accentColor = color,
         isDarkMode = isDarkMode,
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        onClick = onClick
     ) {
         Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp)) {
             Text(
@@ -665,6 +684,17 @@ private fun QuickMetricNeumorph(
                 fontSize = 15.sp,
                 color = if (isDarkMode) TextWhite else TextCharcoal
             )
+            if (subtext != null) {
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = subtext,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 7.5.sp,
+                    color = color,
+                    maxLines = 1
+                )
+            }
         }
     }
 }

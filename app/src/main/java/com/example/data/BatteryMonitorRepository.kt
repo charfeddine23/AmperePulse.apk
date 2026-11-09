@@ -763,4 +763,12 @@ class BatteryMonitorRepository(
             } catch (_: Exception) {}
         }
     }
+
+    fun toggleThermalSimulation(forceOverheat: Boolean? = null) {
+        simulatedTempDelta = when (forceOverheat) {
+            true -> 13.5f // Elevates base ~28.5°C up to 42.0°C (> 40°C critical threshold)
+            false -> 0.0f  // Cool blue nominal ~28.5°C
+            null -> if (simulatedTempDelta > 5f) 0.0f else 13.5f
+        }
+    }
 }

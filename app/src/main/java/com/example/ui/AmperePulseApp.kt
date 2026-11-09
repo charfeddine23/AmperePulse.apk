@@ -28,6 +28,7 @@ import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.LuxurySettingsDrawer
 import com.example.ui.components.LuxuryTopBar
 import com.example.ui.components.NavigationTab
+import com.example.ui.components.thermalLiquidGlassBackground
 import com.example.ui.screens.Page1LivingBatteryScreen
 import com.example.ui.screens.Page2StreaksAndEggScreen
 import com.example.ui.screens.Page3BatterySohScreen
@@ -74,7 +75,14 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
 
     // Dynamic state-based primary accent color
     val activeAccent = when (selectedTab) {
-        NavigationTab.BATTERY -> telemetry.livingState.neonPrimary
+        NavigationTab.BATTERY -> {
+            when {
+                telemetry.temperatureC >= 40f -> Color(0xFFFF3D00)
+                telemetry.temperatureC >= 38f -> Color(0xFFFF9100)
+                telemetry.temperatureC <= 34f -> Color(0xFF00B0FF)
+                else -> telemetry.livingState.neonPrimary
+            }
+        }
         else -> themeConfig.accentColor
     }
 
@@ -87,31 +95,43 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(rootBg)
-                // 90 FPS Hardware Render Pipeline
-                .graphicsLayer { clip = false }
-                .drawBehind {
-                    // Subtle ambient aura tint
-                    val auraColor = activeAccent
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = if (isDark) {
-                                listOf(
-                                    auraColor.copy(alpha = 0.08f * themeConfig.glowIntensity),
-                                    auraColor.copy(alpha = 0.02f),
-                                    Color.Transparent
-                                )
-                            } else {
-                                listOf(
-                                    auraColor.copy(alpha = 0.05f * themeConfig.glowIntensity),
-                                    Color.Transparent
-                                )
-                            },
-                            center = Offset(size.width * 0.5f, size.height * 0.16f),
-                            radius = size.width * 0.85f
+                .then(
+                    if (selectedTab == NavigationTab.BATTERY) {
+                        Modifier.thermalLiquidGlassBackground(
+                            temperatureC = telemetry.temperatureC,
+                            isDarkMode = isDark,
+                            glowIntensity = themeConfig.glowIntensity,
+                            criticalTempThreshold = 40.0f,
+                            normalTempThreshold = 34.0f
                         )
-                    )
-                }
+                    } else {
+                        Modifier
+                            .background(rootBg)
+                            .graphicsLayer { clip = false }
+                            .drawBehind {
+                                // Subtle ambient aura tint
+                                val auraColor = activeAccent
+                                drawCircle(
+                                    brush = Brush.radialGradient(
+                                        colors = if (isDark) {
+                                            listOf(
+                                                auraColor.copy(alpha = 0.08f * themeConfig.glowIntensity),
+                                                auraColor.copy(alpha = 0.02f),
+                                                Color.Transparent
+                                            )
+                                        } else {
+                                            listOf(
+                                                auraColor.copy(alpha = 0.05f * themeConfig.glowIntensity),
+                                                Color.Transparent
+                                            )
+                                        },
+                                        center = Offset(size.width * 0.5f, size.height * 0.16f),
+                                        radius = size.width * 0.85f
+                                    )
+                                )
+                            }
+                    }
+                )
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -168,7 +188,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 prizeRoadData = prizeRoadData,
                                 isAutoSensorMode = isAutoSensorMode,
                                 onSelectLivingState = { viewModel.selectLivingState(it) },
-                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) }
+                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) },
+                                onToggleThermalTest = { viewModel.toggleThermalSimulation() }
                             )
                             NavigationTab.STREAKS -> Page2StreaksAndEggScreen(
                                 streakData = streakData,

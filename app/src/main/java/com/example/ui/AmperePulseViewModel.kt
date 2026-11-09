@@ -119,4 +119,8 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     fun recalibrateSohPrediction() {
         repository.recalibrateSohPrediction()
     }
+
+    fun toggleThermalSimulation(forceOverheat: Boolean? = null) {
+        repository.toggleThermalSimulation(forceOverheat)
+    }
 }
