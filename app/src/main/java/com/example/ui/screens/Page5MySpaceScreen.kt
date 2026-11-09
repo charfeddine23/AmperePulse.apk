@@ -112,7 +112,7 @@ import kotlin.math.sin
 /**
  * PAGE 5: My Space Telemetry Console & Account Center
  * High-performance, silky-smooth 90 FPS real-time charts, oscilloscopes,
- * User Account with Google Linking, and dynamic Current-driven ambient glow visual effects (VFX).
+ * User Account Profile, and dynamic Current-driven ambient glow visual effects (VFX).
  */
 @Composable
 fun Page5MySpaceScreen(
@@ -124,9 +124,6 @@ fun Page5MySpaceScreen(
     sessionLogs: List<SessionLog>,
     themeConfig: GlassThemeConfig,
     userAccount: UserAccount = UserAccount(),
-    onSignInWithGoogle: (Activity, (String) -> Unit, (String) -> Unit) -> Unit = { _, _, _ -> },
-    onLinkGoogle: (String, String) -> Unit = { _, _ -> },
-    onUnlinkGoogle: () -> Unit = {},
     onUpdateOwnerName: (String) -> Unit = {},
     onAddVitalLog: (String, String, String, String) -> Unit
 ) {
@@ -138,7 +135,7 @@ fun Page5MySpaceScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
 
     var selectedMetric by remember { mutableStateOf(MetricType.VOLTAGE) }
-    var showGoogleLinkDialog by remember { mutableStateOf(false) }
+    var showProfileEditDialog by remember { mutableStateOf(false) }
     val activeCurrentMa = telemetry.currentMa
 
     // DYNAMIC CURRENT-DRIVEN AMBIENT GLOW (VFX)
@@ -209,9 +206,10 @@ fun Page5MySpaceScreen(
             ) {
                 LiquidGlassCard(
                     modifier = Modifier.fillMaxWidth(),
-                    accentColor = if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor,
+                    accentColor = animatedAmbientColor,
                     isDarkMode = isDark,
-                    glowIntensity = glow
+                    glowIntensity = glow,
+                    onClick = { showProfileEditDialog = true }
                 ) {
                     Column(
                         modifier = Modifier
@@ -223,7 +221,7 @@ fun Page5MySpaceScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Left Section: Account Avatar, Status & Google Link Chip
+                            // Left Section: Account Avatar, Status & Local Hardware Badge
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
@@ -233,7 +231,7 @@ fun Page5MySpaceScreen(
                                     telemetry = telemetry,
                                     isDarkMode = isDark,
                                     glowIntensity = glow,
-                                    onClick = { showGoogleLinkDialog = true }
+                                    onClick = { showProfileEditDialog = true }
                                 )
 
                                 Spacer(modifier = Modifier.width(12.dp))
@@ -249,41 +247,40 @@ fun Page5MySpaceScreen(
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         PulsingNeonDot(
-                                            color = if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor,
+                                            color = animatedAmbientColor,
                                             sizeDp = 6.dp
                                         )
                                     }
 
                                     Spacer(modifier = Modifier.height(4.dp))
 
-                                    // Google Account Link Action Chip
+                                    // Local Hardware Telemetry Badge
                                     Box(
                                         modifier = Modifier
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                if (userAccount.isGoogleLinked) {
-                                                    TactileGreen.copy(alpha = if (isDark) 0.22f else 0.12f)
-                                                } else {
-                                                    Color(0xFF4285F4).copy(alpha = if (isDark) 0.22f else 0.12f)
-                                                }
-                                            )
+                                            .background(TactileGreen.copy(alpha = if (isDark) 0.22f else 0.12f))
                                             .border(
                                                 1.dp,
-                                                if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.6f) else Color(0xFF4285F4).copy(alpha = 0.5f),
+                                                TactileGreen.copy(alpha = 0.5f),
                                                 RoundedCornerShape(8.dp)
                                             )
-                                            .clickable { showGoogleLinkDialog = true }
+                                            .clickable { showProfileEditDialog = true }
                                             .padding(horizontal = 8.dp, vertical = 4.dp)
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            GoogleLogo(sizeDp = 12.dp)
-                                            Spacer(modifier = Modifier.width(5.dp))
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = TactileGreen,
+                                                modifier = Modifier.size(11.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
                                             Text(
-                                                text = if (userAccount.isGoogleLinked) "مرتبط بـ Google ✓" else "ربط بحساب Google",
+                                                text = "حساب عتاد نشط • محلي 100%",
                                                 fontFamily = OutfitFontFamily,
                                                 fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp,
-                                                color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                                                fontSize = 9.sp,
+                                                color = TactileGreen
                                             )
                                         }
                                     }
@@ -300,15 +297,13 @@ fun Page5MySpaceScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.End
                                 ) {
-                                    if (userAccount.isGoogleLinked) {
-                                        Icon(
-                                            imageVector = Icons.Default.Verified,
-                                            contentDescription = null,
-                                            tint = TactileGreen,
-                                            modifier = Modifier.size(15.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                    }
+                                    Icon(
+                                        imageVector = Icons.Default.Verified,
+                                        contentDescription = null,
+                                        tint = animatedAmbientColor,
+                                        modifier = Modifier.size(15.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = userAccount.ownerName,
                                         fontFamily = OutfitFontFamily,
@@ -328,7 +323,7 @@ fun Page5MySpaceScreen(
                                 )
 
                                 Text(
-                                    text = if (userAccount.isGoogleLinked) userAccount.email else "حساب عتاد محلي",
+                                    text = "Ampere Pulse • ${userAccount.accountTier}",
                                     fontFamily = PlusJakartaSansFontFamily,
                                     fontSize = 9.sp,
                                     color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
@@ -520,19 +515,11 @@ fun Page5MySpaceScreen(
             }
         }
 
-        if (showGoogleLinkDialog) {
-            GoogleAccountLinkDialog(
+        if (showProfileEditDialog) {
+            UserProfileEditDialog(
                 userAccount = userAccount,
                 isDarkMode = isDark,
-                onDismiss = { showGoogleLinkDialog = false },
-                onLinkGoogle = { name, email ->
-                    onLinkGoogle(name, email)
-                    showGoogleLinkDialog = false
-                },
-                onUnlinkGoogle = {
-                    onUnlinkGoogle()
-                    showGoogleLinkDialog = false
-                },
+                onDismiss = { showProfileEditDialog = false },
                 onUpdateOwnerName = { name ->
                     onUpdateOwnerName(name)
                 }
@@ -911,83 +898,16 @@ fun VitalLogItem(
 }
 
 /**
- * High-Precision Vector Canvas Google Logo (Authentic 4-Color G Symbol).
+ * Interactive Neumorphic User Profile Dialog.
  */
 @Composable
-fun GoogleLogo(modifier: Modifier = Modifier, sizeDp: Dp = 18.dp) {
-    Canvas(modifier = modifier.size(sizeDp)) {
-        val w = size.width
-        val h = size.height
-        val strokeWidth = w * 0.22f
-        val inset = strokeWidth / 2f
-        val arcRect = androidx.compose.ui.geometry.Rect(inset, inset, w - inset, h - inset)
-
-        // Blue horizontal crossbar
-        drawLine(
-            color = Color(0xFF4285F4),
-            start = Offset(w * 0.48f, h * 0.5f),
-            end = Offset(w - strokeWidth * 0.2f, h * 0.5f),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Square
-        )
-
-        // Red arc (top / top-left)
-        drawArc(
-            color = Color(0xFFEA4335),
-            startAngle = 200f,
-            sweepAngle = 110f,
-            useCenter = false,
-            topLeft = arcRect.topLeft,
-            size = arcRect.size,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-        )
-        // Yellow arc (left / bottom-left)
-        drawArc(
-            color = Color(0xFFFBBC05),
-            startAngle = 120f,
-            sweepAngle = 80f,
-            useCenter = false,
-            topLeft = arcRect.topLeft,
-            size = arcRect.size,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-        )
-        // Green arc (bottom / bottom-right)
-        drawArc(
-            color = Color(0xFF34A853),
-            startAngle = 25f,
-            sweepAngle = 95f,
-            useCenter = false,
-            topLeft = arcRect.topLeft,
-            size = arcRect.size,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-        )
-        // Blue arc (right)
-        drawArc(
-            color = Color(0xFF4285F4),
-            startAngle = 310f,
-            sweepAngle = 75f,
-            useCenter = false,
-            topLeft = arcRect.topLeft,
-            size = arcRect.size,
-            style = Stroke(width = strokeWidth, cap = StrokeCap.Butt)
-        )
-    }
-}
-
-/**
- * Interactive Neumorphic Google Account Link & Profile Sync Dialog.
- */
-@Composable
-fun GoogleAccountLinkDialog(
+fun UserProfileEditDialog(
     userAccount: UserAccount,
     isDarkMode: Boolean,
     onDismiss: () -> Unit,
-    onLinkGoogle: (String, String) -> Unit,
-    onUnlinkGoogle: () -> Unit,
     onUpdateOwnerName: (String) -> Unit
 ) {
     var ownerNameInput by remember { mutableStateOf(userAccount.ownerName) }
-    val googleEmail = userAccount.email
 
     val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
     val textColor = if (isDarkMode) TextWhite else TextCharcoal
@@ -1008,23 +928,28 @@ fun GoogleAccountLinkDialog(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFF1F5F9))
-                        .border(1.dp, Color(0xFF4285F4).copy(alpha = 0.5f), CircleShape),
+                        .background(TactileRoyalBlue.copy(alpha = if (isDarkMode) 0.22f else 0.12f))
+                        .border(1.dp, TactileRoyalBlue.copy(alpha = 0.5f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    GoogleLogo(sizeDp = 20.dp)
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = TactileRoyalBlue,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
-                        text = if (userAccount.isGoogleLinked) "إدارة حساب Google" else "ربط بحساب Google",
+                        text = "ملف المستخدم",
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
                         color = textColor
                     )
                     Text(
-                        text = "Ampere Pulse Cloud & Profile Sync",
+                        text = "Ampere Pulse Local Core",
                         fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 10.sp,
                         color = subTextColor
@@ -1044,40 +969,30 @@ fun GoogleAccountLinkDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(
-                            if (userAccount.isGoogleLinked) {
-                                TactileGreen.copy(alpha = if (isDarkMode) 0.16f else 0.10f)
-                            } else {
-                                Color(0xFF4285F4).copy(alpha = if (isDarkMode) 0.16f else 0.08f)
-                            }
-                        )
-                        .border(
-                            1.dp,
-                            if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.4f) else Color(0xFF4285F4).copy(alpha = 0.35f),
-                            RoundedCornerShape(14.dp)
-                        )
+                        .background(TactileGreen.copy(alpha = if (isDarkMode) 0.16f else 0.10f))
+                        .border(1.dp, TactileGreen.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
                         .padding(14.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (userAccount.isGoogleLinked) Icons.Default.CloudDone else Icons.Default.CloudQueue,
+                            imageVector = Icons.Default.CheckCircle,
                             contentDescription = null,
-                            tint = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4),
+                            tint = TactileGreen,
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                text = if (userAccount.isGoogleLinked) "الحساب مرتبط بنجاح ✓" else "حسابك جاهز للربط الفوري",
+                                text = "حساب عتاد محلي نشط 100%",
                                 fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
-                                color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                                color = TactileGreen
                             )
                             Text(
-                                text = if (userAccount.isGoogleLinked) "المزامنة السحابية 24/7 نشطة مع قاعدة البيانات" else "اربط حسابك لتفعيل النسخ الاحتياطي في السحابة",
+                                text = "البيانات مخزنة ومحمية محلياً في جهازك (Room WAL)",
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
                                 color = subTextColor
@@ -1100,9 +1015,6 @@ fun GoogleAccountLinkDialog(
                         value = ownerNameInput,
                         onValueChange = {
                             ownerNameInput = it
-                            if (userAccount.isGoogleLinked) {
-                                onUpdateOwnerName(it)
-                            }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
@@ -1120,7 +1032,7 @@ fun GoogleAccountLinkDialog(
                     )
                 }
 
-                // Google Account Details Box
+                // Account Details Box
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1136,7 +1048,7 @@ fun GoogleAccountLinkDialog(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "حساب Google المرتبط",
+                                text = "رتبة الحساب",
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
                                 color = subTextColor
@@ -1144,146 +1056,87 @@ fun GoogleAccountLinkDialog(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(if (userAccount.isGoogleLinked) TactileGreen.copy(alpha = 0.15f) else Color(0x184285F4))
+                                    .background(TactileRoyalBlue.copy(alpha = 0.15f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
                                 Text(
-                                    text = if (userAccount.isGoogleLinked) "ACTIVE" else "READY",
+                                    text = userAccount.accountTier,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (userAccount.isGoogleLinked) TactileGreen else Color(0xFF4285F4)
+                                    color = TactileRoyalBlue
                                 )
                             }
                         }
 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            GoogleLogo(sizeDp = 16.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = googleEmail,
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
-                                color = textColor
-                            )
-                        }
+                        Text(
+                            text = "الأحرف الأولى: ${userAccount.avatarInitials}",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            color = textColor
+                        )
                     }
                 }
 
-                // Cloud Sync Feature Highlights
+                // Privacy and Security Bullets
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = "مزايا ربط الحساب:",
+                        text = "مواصفات الأمان المحلي:",
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
                         color = textColor
                     )
-                    GoogleFeatureBullet(
+                    ProfileFeatureBullet(
                         icon = Icons.Default.Bolt,
                         tint = TactileGreen,
-                        text = "مزامنة سحابية مستمرة لسجلات الجهد والتيار والحرارة (Room WAL)",
+                        text = "قاعدة بيانات Room محلية مع وضع WAL لسرعة القراءة والكتابة",
                         isDarkMode = isDarkMode
                     )
-                    GoogleFeatureBullet(
+                    ProfileFeatureBullet(
                         icon = Icons.Default.Verified,
                         tint = TactileRoyalBlue,
-                        text = "حفظ تقدم بيضة السايبر ومستويات طريق الجائزة في السحابة",
-                        isDarkMode = isDarkMode
-                    )
-                    GoogleFeatureBullet(
-                        icon = Icons.Default.Sync,
-                        tint = Color(0xFFA855F7),
-                        text = "إمكانية استرجاع البيانات فوراً عند تغيير الجهاز أو إعادة تثبيت التطبيق",
+                        text = "خصوصية تامة 100% دون إرسال أو ربط أي بيانات بأي جهات خارجية",
                         isDarkMode = isDarkMode
                     )
                 }
             }
         },
         confirmButton = {
-            if (!userAccount.isGoogleLinked) {
-                Button(
-                    onClick = {
-                        onLinkGoogle(ownerNameInput.ifBlank { "Charfeddine" }, googleEmail)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4285F4)
-                    )
-                ) {
-                    GoogleLogo(sizeDp = 16.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "تأكيد الربط بحساب Google الآن",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Color.White
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onUnlinkGoogle,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = TactileCoralRed
-                        )
-                    ) {
-                        Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(14.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "إلغاء الربط",
-                            fontFamily = OutfitFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp
-                        )
-                    }
-
-                    Button(
-                        onClick = {
-                            onUpdateOwnerName(ownerNameInput)
-                            onDismiss()
-                        },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = TactileRoyalBlue
-                        )
-                    ) {
-                        Text(
-                            text = "حفظ وإغلاق",
-                            fontFamily = OutfitFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp,
-                            color = Color.White
-                        )
-                    }
-                }
+            Button(
+                onClick = {
+                    onUpdateOwnerName(ownerNameInput.ifBlank { "Charfeddine" })
+                    onDismiss()
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = TactileRoyalBlue
+                )
+            ) {
+                Text(
+                    text = "حفظ الاسم",
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    color = Color.White
+                )
             }
         },
         dismissButton = {
-            if (!userAccount.isGoogleLinked) {
-                TextButton(onClick = onDismiss) {
-                    Text(
-                        text = "إلغاء",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        color = subTextColor
-                    )
-                }
+            TextButton(onClick = onDismiss) {
+                Text(
+                    text = "إلغاء",
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    color = subTextColor
+                )
             }
         }
     )
 }
 
 @Composable
-private fun GoogleFeatureBullet(
+private fun ProfileFeatureBullet(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     tint: Color,
     text: String,
@@ -1488,17 +1341,13 @@ fun ChargingStateNeonProfileAvatar(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            if (userAccount.isGoogleLinked) {
-                GoogleLogo(sizeDp = 22.dp)
-            } else {
-                Text(
-                    text = userAccount.avatarInitials,
-                    fontFamily = OutfitFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = primaryNeon
-                )
-            }
+            Text(
+                text = userAccount.avatarInitials,
+                fontFamily = OutfitFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = primaryNeon
+            )
         }
 
         // 3. Micro Neon State Indicator Pill (Pinned at 4 o'clock position)

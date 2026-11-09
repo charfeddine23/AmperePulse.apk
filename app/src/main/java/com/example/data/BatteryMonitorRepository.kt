@@ -639,37 +639,6 @@ class BatteryMonitorRepository(
         _sessionLogs.value = listOf(newLog) + _sessionLogs.value
     }
 
-    fun linkGoogleAccount(ownerName: String = "Charfeddine", email: String = "charfeddineka02@gmail.com") {
-        val cleanName = ownerName.ifBlank { "Charfeddine" }
-        val initials = cleanName.trim().take(2).uppercase().ifEmpty { "CK" }
-        _userAccount.value = _userAccount.value.copy(
-            isGoogleLinked = true,
-            ownerName = cleanName,
-            email = email.ifBlank { "charfeddineka02@gmail.com" },
-            avatarInitials = initials,
-            linkedDate = "Linked Just Now"
-        )
-        addManualSessionLog(
-            title = "Google Account Linked",
-            desc = "Google account ($email) successfully connected. 24/7 cloud telemetry backup and profile sync active.",
-            statTag = "GOOGLE SYNC",
-            type = "check"
-        )
-    }
-
-    fun unlinkGoogleAccount() {
-        _userAccount.value = _userAccount.value.copy(
-            isGoogleLinked = false,
-            linkedDate = null
-        )
-        addManualSessionLog(
-            title = "Google Account Disconnected",
-            desc = "Google account unlinked. Running in standalone local hardware telemetry mode.",
-            statTag = "LOCAL MODE",
-            type = "info"
-        )
-    }
-
     fun updateOwnerName(name: String) {
         if (name.isNotBlank()) {
             val trimmed = name.trim()

@@ -96,14 +96,6 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         repository.addManualSessionLog(title, desc, statTag, type)
     }
 
-    fun linkGoogleAccount(ownerName: String = "Charfeddine", email: String = "charfeddineka02@gmail.com") {
-        repository.linkGoogleAccount(ownerName, email)
-    }
-
-    fun unlinkGoogleAccount() {
-        repository.unlinkGoogleAccount()
-    }
-
     fun updateOwnerName(name: String) {
         repository.updateOwnerName(name)
     }

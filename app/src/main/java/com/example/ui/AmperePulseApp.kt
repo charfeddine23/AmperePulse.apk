@@ -219,8 +219,6 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 sessionLogs = sessionLogs,
                                 themeConfig = themeConfig,
                                 userAccount = userAccount,
-                                onLinkGoogle = { name, email -> viewModel.linkGoogleAccount(name, email) },
-                                onUnlinkGoogle = { viewModel.unlinkGoogleAccount() },
                                 onUpdateOwnerName = { viewModel.updateOwnerName(it) },
                                 onAddVitalLog = { title, desc, tag, type ->
                                     viewModel.addManualLog(title, desc, tag, type)
