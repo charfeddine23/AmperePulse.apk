@@ -229,3 +229,85 @@ data class UserAccount(
     val linkedDate: String? = null,
     val isCloudSyncActive: Boolean = true
 )
+
+enum class CableDnaTier(
+    val title: String,
+    val grade: String,
+    val badgeColor: Color,
+    val xpMultiplier: Float,
+    val description: String,
+    val isDangerous: Boolean
+) {
+    LEGENDARY_ORIGINAL(
+        title = "Legendary OEM Original",
+        grade = "TIER S+",
+        badgeColor = TactileGreen,
+        xpMultiplier = 2.0f,
+        description = "Ultra-low resistance path (<140mΩ). 99.8% copper purity with minimal voltage sag. Maximum fast charge throughput.",
+        isDangerous = false
+    ),
+    CERTIFIED_FAST(
+        title = "Certified Fast High-Flow",
+        grade = "TIER A",
+        badgeColor = TactileCyan,
+        xpMultiplier = 1.5f,
+        description = "Nominal cable resistance (140-260mΩ). High electron mobility with stable power delivery under sustained load.",
+        isDangerous = false
+    ),
+    DEGRADED_STANDARD(
+        title = "Degraded Standard Line",
+        grade = "TIER C",
+        badgeColor = TactileAmber,
+        xpMultiplier = 1.0f,
+        description = "Elevated resistance (260-450mΩ). Moderate voltage sag detected. Charging speeds may throttle during peak draw.",
+        isDangerous = false
+    ),
+    DANGEROUS_COUNTERFEIT(
+        title = "Dangerous Counterfeit Alert",
+        grade = "CRITICAL",
+        badgeColor = TactileCoralRed,
+        xpMultiplier = 0.5f,
+        description = "Excessive resistance (>450mΩ) with high heat dissipation! Severe voltage drop poses thermal hazard to battery matrix.",
+        isDangerous = true
+    )
+}
+
+data class CableDiagnosticResult(
+    val resistanceMilliOhms: Int = 118,
+    val voltageDropMv: Int = 142,
+    val measuredVoltageMv: Int = 4180,
+    val measuredCurrentMa: Int = 2340,
+    val maxWattageW: Float = 18.5f,
+    val qualityScore: Int = 96,
+    val tier: CableDnaTier = CableDnaTier.LEGENDARY_ORIGINAL,
+    val usbProtocol: String = "USB-PD 3.0 PPS",
+    val pinIntegrityPercent: Int = 99,
+    val thermalDissipationMilliWatts: Int = 647,
+    val scanTimestamp: Long = System.currentTimeMillis()
+)
+
+enum class CellHealthStatus(
+    val label: String,
+    val color: Color,
+    val description: String
+) {
+    PRISTINE("Pristine Medical Grade", TactileGreen, "Solid crystal cathode lattice. Zero measurable dendrite formation."),
+    OPTIMAL("Optimal Operating Matrix", TactileCyan, "Nominal cycle degradation within manufacturer design specifications."),
+    MODERATE("Aging Cell Matrix", TactileAmber, "Slight capacity fade detected. Recommend 20%-80% charging habits."),
+    CRITICAL("Severe Cell Degradation", TactileCoralRed, "Noticeable internal resistance buildup. Replacement recommended.")
+}
+
+data class BatterySohPrediction(
+    val healthPercentage: Float = 98.4f,
+    val originalCapacityMah: Int = 5000,
+    val estimatedCurrentCapacityMah: Int = 4920,
+    val totalCyclesCompleted: Int = 142,
+    val estimatedRemainingCycles: Int = 858,
+    val estimatedLifespanDays: Int = 842,
+    val degradationRatePer100Cycles: Float = 1.15f,
+    val coulombicEfficiencyPercent: Float = 99.4f,
+    val internalResistanceEstimateMilliOhms: Int = 48,
+    val cellStatus: CellHealthStatus = CellHealthStatus.PRISTINE,
+    val projectedReplacementDate: String = "September 2028",
+    val chemistryType: String = "Li-Poly Solid Matrix (NMC 811)"
+)

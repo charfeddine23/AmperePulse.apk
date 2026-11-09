@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Ampere Pulse</string>
+    <string name="widget_description">Live telemetry monitor with dynamic battery states</string>
 </resources>

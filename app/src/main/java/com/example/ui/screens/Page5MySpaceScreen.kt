@@ -1,5 +1,8 @@
 package com.example.ui.screens
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -31,8 +34,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AddCircleOutline
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDone
@@ -41,6 +46,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Sync
@@ -67,6 +73,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -117,6 +124,7 @@ fun Page5MySpaceScreen(
     sessionLogs: List<SessionLog>,
     themeConfig: GlassThemeConfig,
     userAccount: UserAccount = UserAccount(),
+    onSignInWithGoogle: (Activity, (String) -> Unit, (String) -> Unit) -> Unit = { _, _, _ -> },
     onLinkGoogle: (String, String) -> Unit = { _, _ -> },
     onUnlinkGoogle: () -> Unit = {},
     onUpdateOwnerName: (String) -> Unit = {},
@@ -220,36 +228,13 @@ fun Page5MySpaceScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(46.dp)
-                                        .clip(CircleShape)
-                                        .background(
-                                            if (userAccount.isGoogleLinked) {
-                                                TactileGreen.copy(alpha = if (isDark) 0.20f else 0.12f)
-                                            } else {
-                                                animatedAmbientColor.copy(alpha = if (isDark) 0.20f else 0.12f)
-                                            }
-                                        )
-                                        .border(
-                                            1.5.dp,
-                                            if (userAccount.isGoogleLinked) TactileGreen else animatedAmbientColor.copy(alpha = 0.5f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (userAccount.isGoogleLinked) {
-                                        GoogleLogo(sizeDp = 22.dp)
-                                    } else {
-                                        Text(
-                                            text = userAccount.avatarInitials,
-                                            fontFamily = OutfitFontFamily,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 17.sp,
-                                            color = animatedAmbientColor
-                                        )
-                                    }
-                                }
+                                ChargingStateNeonProfileAvatar(
+                                    userAccount = userAccount,
+                                    telemetry = telemetry,
+                                    isDarkMode = isDark,
+                                    glowIntensity = glow,
+                                    onClick = { showGoogleLinkDialog = true }
+                                )
 
                                 Spacer(modifier = Modifier.width(12.dp))
 
@@ -1326,4 +1311,220 @@ private fun GoogleFeatureBullet(
         )
     }
 }
+
+private data class AvatarChargingStateConfig(
+    val primaryNeon: Color,
+    val secondaryNeon: Color,
+    val stateBadgeIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    val pulseDurationMs: Int
+)
+
+/**
+ * Dynamic Pulsing Neon Avatar Ring for Google Account Profile.
+ * Real-time responsive to Battery Charging States (Energy Storing, Overheating, Cooling, Deep Sleep),
+ * creating an ultra-immersive Liquid Glass & Tactile Neumorphic visual effect.
+ */
+@Composable
+fun ChargingStateNeonProfileAvatar(
+    userAccount: UserAccount,
+    telemetry: BatteryTelemetry,
+    isDarkMode: Boolean,
+    glowIntensity: Float,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
+) {
+    val livingState = telemetry.livingState
+    val isCharging = telemetry.status == com.example.data.BatteryStatus.CHARGING || telemetry.status == com.example.data.BatteryStatus.FULL || telemetry.currentMa > 0
+    val isFastCharging = telemetry.isFastCharging || telemetry.currentMa >= 2000
+    val isOverheating = telemetry.temperatureC >= 38.5f || livingState == com.example.data.LivingBatteryState.OVERDRIVE_HEATING
+
+    // Dynamic State Colors & Timing mapped to BatteryManager Telemetry
+    val config = when {
+        isOverheating -> AvatarChargingStateConfig(
+            primaryNeon = TactileCoralRed, // #FF3D00 Warning Red
+            secondaryNeon = Color(0xFFFF9100), // Electric Amber
+            stateBadgeIcon = Icons.Default.LocalFireDepartment,
+            pulseDurationMs = 650 // Rapid alarm heartbeat pulse
+        )
+        isFastCharging -> AvatarChargingStateConfig(
+            primaryNeon = TactileGreen, // #00C853 Phosphor Green
+            secondaryNeon = Color(0xFF00E5FF), // Cyber Cyan Inflow
+            stateBadgeIcon = Icons.Default.Bolt,
+            pulseDurationMs = 850 // Fast energetic rhythm
+        )
+        isCharging -> AvatarChargingStateConfig(
+            primaryNeon = TactileGreen, // #00C853
+            secondaryNeon = Color(0xFF69F0AE),
+            stateBadgeIcon = Icons.Default.Bolt,
+            pulseDurationMs = 1150 // Smooth charging rhythm
+        )
+        livingState == com.example.data.LivingBatteryState.COOLING -> AvatarChargingStateConfig(
+            primaryNeon = Color(0xFF00B0FF), // Ice Cyan
+            secondaryNeon = Color(0xFF80D8FF),
+            stateBadgeIcon = Icons.Default.AcUnit,
+            pulseDurationMs = 1400 // Serene cryo cooling wave
+        )
+        livingState == com.example.data.LivingBatteryState.DEEP_SLEEP -> AvatarChargingStateConfig(
+            primaryNeon = Color(0xFF7C4DFF), // Night Purple
+            secondaryNeon = Color(0xFFB388FF),
+            stateBadgeIcon = Icons.Default.Bedtime,
+            pulseDurationMs = 2000 // Deep tranquil breathing
+        )
+        else -> AvatarChargingStateConfig(
+            primaryNeon = TactileRoyalBlue, // #2962FF
+            secondaryNeon = Color(0xFF82B1FF),
+            stateBadgeIcon = Icons.Default.Bolt,
+            pulseDurationMs = 1600 // Nominal idle pulse
+        )
+    }
+
+    val primaryNeon = config.primaryNeon
+    val secondaryNeon = config.secondaryNeon
+    val stateBadgeIcon = config.stateBadgeIcon
+    val pulseDurationMs = config.pulseDurationMs
+
+    val infiniteTransition = rememberInfiniteTransition(label = "avatarNeonTransition")
+
+    // Pulsing Neon Glow Intensity & Outer Halo Scale
+    val pulseFraction by infiniteTransition.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(pulseDurationMs, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "avatarPulseFraction"
+    )
+
+    // Fluid Orbiting Electron Arc Rotation
+    val orbitAngle by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(if (isFastCharging) 2400 else 4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "avatarOrbitAngle"
+    )
+
+    Box(
+        modifier = modifier
+            .size(54.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        // 1. Dynamic Diffused Ambient Neon Aura & Orbiting Liquid Stroke (Canvas Glow)
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { clip = false }
+        ) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val baseRadius = size.width * 0.44f
+            val dynamicRadius = baseRadius + (4.dp.toPx() * pulseFraction)
+
+            // Outer soft ambient neon diffusion
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        primaryNeon.copy(alpha = if (isDarkMode) (0.42f * pulseFraction * glowIntensity) else (0.28f * pulseFraction * glowIntensity)),
+                        primaryNeon.copy(alpha = if (isDarkMode) (0.12f * pulseFraction * glowIntensity) else (0.08f * pulseFraction * glowIntensity)),
+                        Color.Transparent
+                    ),
+                    center = center,
+                    radius = dynamicRadius + 8.dp.toPx()
+                ),
+                center = center,
+                radius = dynamicRadius + 8.dp.toPx()
+            )
+
+            // Orbiting liquid neon sweep stroke
+            drawArc(
+                brush = Brush.sweepGradient(
+                    colors = listOf(
+                        primaryNeon.copy(alpha = 0.1f),
+                        primaryNeon,
+                        secondaryNeon,
+                        primaryNeon.copy(alpha = 0.15f)
+                    ),
+                    center = center
+                ),
+                startAngle = orbitAngle,
+                sweepAngle = 300f,
+                useCenter = false,
+                style = Stroke(
+                    width = (2.4.dp + (0.8.dp * pulseFraction)).toPx(),
+                    cap = StrokeCap.Round
+                ),
+                topLeft = Offset(center.x - baseRadius, center.y - baseRadius),
+                size = androidx.compose.ui.geometry.Size(baseRadius * 2f, baseRadius * 2f)
+            )
+
+            // Tactile specular liquid glass inner border
+            drawCircle(
+                color = if (isDarkMode) Color(0x33FFFFFF) else Color(0x80FFFFFF),
+                radius = baseRadius - 1.dp.toPx(),
+                center = center,
+                style = Stroke(width = 1.dp.toPx())
+            )
+        }
+
+        // 2. Liquid Glass Frosted Center Capsule
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isDarkMode) {
+                        Color(0xFF1E293B).copy(alpha = 0.90f)
+                    } else {
+                        Color(0xFFFFFFFF).copy(alpha = 0.95f)
+                    }
+                )
+                .border(
+                    width = 1.dp,
+                    color = primaryNeon.copy(alpha = 0.35f + (0.35f * pulseFraction)),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (userAccount.isGoogleLinked) {
+                GoogleLogo(sizeDp = 22.dp)
+            } else {
+                Text(
+                    text = userAccount.avatarInitials,
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = primaryNeon
+                )
+            }
+        }
+
+        // 3. Micro Neon State Indicator Pill (Pinned at 4 o'clock position)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(17.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isDarkMode) Color(0xFF0F172A) else Color(0xFFFFFFFF)
+                )
+                .border(
+                    1.2.dp,
+                    primaryNeon.copy(alpha = 0.85f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = stateBadgeIcon,
+                contentDescription = null,
+                tint = primaryNeon,
+                modifier = Modifier.size(10.dp)
+            )
+        }
+    }
+}
+
 

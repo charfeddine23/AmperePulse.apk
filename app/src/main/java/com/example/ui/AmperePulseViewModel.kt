@@ -40,6 +40,8 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     val techCrew: StateFlow<List<TechCrewMember>> = repository.techCrew
     val isAutoSensorMode: StateFlow<Boolean> = repository.isAutoSensorMode
     val userAccount: StateFlow<com.example.data.UserAccount> = repository.userAccount
+    val cableResult: StateFlow<com.example.data.CableDiagnosticResult> = repository.cableResult
+    val sohPrediction: StateFlow<com.example.data.BatterySohPrediction> = repository.sohPrediction
 
     private val _selectedTab = MutableStateFlow(NavigationTab.BATTERY)
     val selectedTab: StateFlow<NavigationTab> = _selectedTab.asStateFlow()
@@ -108,5 +110,13 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleCloudSync(enabled: Boolean) {
         repository.toggleCloudSync(enabled)
+    }
+
+    fun runCableDiagnosticSweep(tierOverride: com.example.data.CableDnaTier? = null) {
+        repository.runCableDiagnosticSweep(tierOverride)
+    }
+
+    fun recalibrateSohPrediction() {
+        repository.recalibrateSohPrediction()
     }
 }

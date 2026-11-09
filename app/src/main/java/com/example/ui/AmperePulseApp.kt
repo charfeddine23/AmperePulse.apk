@@ -30,8 +30,8 @@ import com.example.ui.components.LuxuryTopBar
 import com.example.ui.components.NavigationTab
 import com.example.ui.screens.Page1LivingBatteryScreen
 import com.example.ui.screens.Page2StreaksAndEggScreen
-import com.example.ui.screens.Page3PrizeRoadScreen
-import com.example.ui.screens.Page4TechCrewScreen
+import com.example.ui.screens.Page3BatterySohScreen
+import com.example.ui.screens.Page4CableDnaScreen
 import com.example.ui.screens.Page5MySpaceScreen
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.NeumorphBgDark
@@ -50,6 +50,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val eggData by viewModel.eggData.collectAsState()
     val prizeRoadData by viewModel.prizeRoadData.collectAsState()
     val techCrew by viewModel.techCrew.collectAsState()
+    val cableResult by viewModel.cableResult.collectAsState()
+    val sohPrediction by viewModel.sohPrediction.collectAsState()
 
     val selectedTab by viewModel.selectedTab.collectAsState()
     val themeConfig by viewModel.themeConfig.collectAsState()
@@ -120,8 +122,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     subtitle = when (selectedTab) {
                         NavigationTab.BATTERY -> "PAGE 1: LIVING BATTERY MATRIX"
                         NavigationTab.STREAKS -> "PAGE 2: STREAKS & CYBER INCUBATOR"
-                        NavigationTab.PRIZE_ROAD -> "PAGE 3: 1,000-LEVEL PRIZE ROAD"
-                        NavigationTab.TECH_CREW -> "PAGE 4: TECH CREW DECK"
+                        NavigationTab.BATTERY_SOH -> "PAGE 3: BATTERY SOH & CYCLE PREDICTOR"
+                        NavigationTab.CABLE_DNA -> "PAGE 4: CABLE DNA & CHARGER ANALYZER"
                         NavigationTab.MY_SPACE -> "PAGE 5: TELEMETRY SPACE & LOG"
                     },
                     isMenuOpen = isSettingsOpen,
@@ -166,7 +168,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 prizeRoadData = prizeRoadData,
                                 isAutoSensorMode = isAutoSensorMode,
                                 onSelectLivingState = { viewModel.selectLivingState(it) },
-                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.PRIZE_ROAD) }
+                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) }
                             )
                             NavigationTab.STREAKS -> Page2StreaksAndEggScreen(
                                 streakData = streakData,
@@ -175,16 +177,17 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 onHatchEgg = { viewModel.hatchEgg() },
                                 onRepairShield = { viewModel.repairShield() }
                             )
-                            NavigationTab.PRIZE_ROAD -> Page3PrizeRoadScreen(
-                                prizeRoadData = prizeRoadData,
+                            NavigationTab.BATTERY_SOH -> Page3BatterySohScreen(
+                                telemetry = telemetry,
                                 themeConfig = themeConfig,
-                                onClaimMilestone = { viewModel.claimMilestone(it) },
-                                onAddSimulatedMah = { viewModel.addCumulativeMah(it) }
+                                sohPrediction = sohPrediction,
+                                onRecalibrateSoh = { viewModel.recalibrateSohPrediction() }
                             )
-                            NavigationTab.TECH_CREW -> Page4TechCrewScreen(
-                                crewMembers = techCrew,
+                            NavigationTab.CABLE_DNA -> Page4CableDnaScreen(
+                                telemetry = telemetry,
                                 themeConfig = themeConfig,
-                                onTriggerAbility = { viewModel.triggerCrewAbility(it) }
+                                cableResult = cableResult,
+                                onRunDiagnosticSweep = { viewModel.runCableDiagnosticSweep(it) }
                             )
                             NavigationTab.MY_SPACE -> Page5MySpaceScreen(
                                 telemetry = telemetry,

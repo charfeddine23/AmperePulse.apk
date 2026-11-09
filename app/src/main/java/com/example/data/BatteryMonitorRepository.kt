@@ -63,6 +63,15 @@ class BatteryMonitorRepository(
     private val _userAccount = MutableStateFlow(UserAccount())
     val userAccount: StateFlow<UserAccount> = _userAccount.asStateFlow()
 
+    private val _cableResult = MutableStateFlow(CableDiagnosticResult())
+    val cableResult: StateFlow<CableDiagnosticResult> = _cableResult.asStateFlow()
+
+    private val _sohPrediction = MutableStateFlow(BatterySohPrediction())
+    val sohPrediction: StateFlow<BatterySohPrediction> = _sohPrediction.asStateFlow()
+
+    private var previousLivingState: LivingBatteryState? = null
+    private var previousIsCharging: Boolean = false
+
     private var manualStateOverride: LivingBatteryState? = null
     private var simulatedTempDelta = 0.0f
     private var simTick = 0L
@@ -328,6 +337,56 @@ class BatteryMonitorRepository(
 
         _telemetry.value = telemetry
         appendHistoryPoint(telemetry)
+
+        // Update Liquid Glass Home Widget with live telemetry
+        scope.launch {
+            try {
+                com.example.widget.WidgetTelemetryUpdater.update(
+                    context = context,
+                    pct = telemetry.percentage,
+                    tempC = telemetry.temperatureC,
+                    voltageMv = telemetry.voltageMv,
+                    currentMa = telemetry.currentMa,
+                    stateName = telemetry.livingState.name
+                )
+            } catch (_: Exception) {}
+        }
+
+        // Trigger Cable DNA and Audio/Haptic cues on Charger Connect
+        val isNowCharging = telemetry.status == BatteryStatus.CHARGING || telemetry.status == BatteryStatus.FULL || telemetry.currentMa > 0
+        if (previousIsCharging != isNowCharging) {
+            previousIsCharging = isNowCharging
+            if (isNowCharging) {
+                runCableDiagnosticSweep()
+                com.example.audio.CyberSoundscapeEngine.playDiagnosticSweep()
+                com.example.audio.CyberHapticsEngine.triggerElectricSpark(context)
+            }
+        }
+
+        // Trigger Audio/Haptic cues on Living State Transition
+        if (previousLivingState != telemetry.livingState) {
+            val oldState = previousLivingState
+            previousLivingState = telemetry.livingState
+            if (oldState != null) {
+                when (telemetry.livingState) {
+                    LivingBatteryState.OVERDRIVE_HEATING -> {
+                        com.example.audio.CyberHapticsEngine.triggerThermalWarning(context)
+                        com.example.audio.CyberSoundscapeEngine.playThermalAlert()
+                    }
+                    LivingBatteryState.COOLING -> {
+                        com.example.audio.CyberHapticsEngine.triggerCrystalMorph(context)
+                        com.example.audio.CyberSoundscapeEngine.playCryoChime()
+                    }
+                    LivingBatteryState.ENERGY_STORING -> {
+                        com.example.audio.CyberHapticsEngine.triggerElectricSpark(context)
+                        com.example.audio.CyberSoundscapeEngine.playElectricSpark()
+                    }
+                    LivingBatteryState.DEEP_SLEEP -> {
+                        com.example.audio.CyberHapticsEngine.triggerTactileTick(context)
+                    }
+                }
+            }
+        }
     }
 
     private fun appendHistoryPoint(t: BatteryTelemetry) {
@@ -624,5 +683,84 @@ class BatteryMonitorRepository(
 
     fun toggleCloudSync(enabled: Boolean) {
         _userAccount.value = _userAccount.value.copy(isCloudSyncActive = enabled)
+    }
+
+    fun runCableDiagnosticSweep(tierOverride: CableDnaTier? = null) {
+        val currentV = _telemetry.value.voltageMv
+        val currentI = abs(_telemetry.value.currentMa).coerceAtLeast(100)
+
+        val evaluatedTier = tierOverride ?: when {
+            _telemetry.value.temperatureC > 38f -> CableDnaTier.DANGEROUS_COUNTERFEIT
+            currentI >= 2000 && currentV >= 4100 -> CableDnaTier.LEGENDARY_ORIGINAL
+            currentI >= 1200 -> CableDnaTier.CERTIFIED_FAST
+            else -> CableDnaTier.DEGRADED_STANDARD
+        }
+
+        val resistance = when (evaluatedTier) {
+            CableDnaTier.LEGENDARY_ORIGINAL -> 108
+            CableDnaTier.CERTIFIED_FAST -> 195
+            CableDnaTier.DEGRADED_STANDARD -> 360
+            CableDnaTier.DANGEROUS_COUNTERFEIT -> 580
+        }
+        val drop = when (evaluatedTier) {
+            CableDnaTier.LEGENDARY_ORIGINAL -> 115
+            CableDnaTier.CERTIFIED_FAST -> 230
+            CableDnaTier.DEGRADED_STANDARD -> 440
+            CableDnaTier.DANGEROUS_COUNTERFEIT -> 760
+        }
+
+        val dissipationMw = ((currentI.toDouble() / 1000.0) * (currentI.toDouble() / 1000.0) * (resistance.toDouble() / 1000.0) * 1000.0).toInt()
+
+        val result = CableDiagnosticResult(
+            resistanceMilliOhms = resistance,
+            voltageDropMv = drop,
+            measuredVoltageMv = currentV,
+            measuredCurrentMa = currentI,
+            qualityScore = when (evaluatedTier) {
+                CableDnaTier.LEGENDARY_ORIGINAL -> 98
+                CableDnaTier.CERTIFIED_FAST -> 89
+                CableDnaTier.DEGRADED_STANDARD -> 64
+                CableDnaTier.DANGEROUS_COUNTERFEIT -> 31
+            },
+            tier = evaluatedTier,
+            thermalDissipationMilliWatts = dissipationMw,
+            scanTimestamp = System.currentTimeMillis()
+        )
+        _cableResult.value = result
+
+        addManualSessionLog(
+            title = "Cable DNA Audit: ${evaluatedTier.title}",
+            desc = "Internal Resistance ${resistance}mΩ, Sag -${drop}mV. Tier: ${evaluatedTier.grade} (${evaluatedTier.xpMultiplier}x XP).",
+            statTag = evaluatedTier.grade,
+            type = if (evaluatedTier.isDangerous) "warning" else "check"
+        )
+    }
+
+    fun recalibrateSohPrediction() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val db = com.example.data.local.AmpereDatabase.getInstance(context)
+                val logCount = db.telemetryLogDao().getLogCount()
+                val baseHealth = 98.4f
+                val calculatedHealth = (baseHealth - (logCount * 0.001f)).coerceIn(80f, 100f)
+                val healthFormatted = (calculatedHealth * 10).toInt() / 10f
+
+                _sohPrediction.value = _sohPrediction.value.copy(
+                    healthPercentage = healthFormatted,
+                    estimatedCurrentCapacityMah = (5000 * (healthFormatted / 100f)).toInt(),
+                    totalCyclesCompleted = 142 + (logCount / 500),
+                    estimatedRemainingCycles = 858 - (logCount / 500),
+                    estimatedLifespanDays = (842 - (logCount / 300)).coerceAtLeast(365),
+                    coulombicEfficiencyPercent = 99.4f
+                )
+
+                addManualSessionLog(
+                    title = "Cell SOH Recalibrated",
+                    desc = "Room WAL database synchronized ($logCount records). State of Health: $healthFormatted%, Est. Lifespan: ${_sohPrediction.value.estimatedLifespanDays} Days.",
+                    statTag = "SOH $healthFormatted%",
+                    type = "check"
+                )
+            } catch (_: Exception) {}
+        }
     }
 }

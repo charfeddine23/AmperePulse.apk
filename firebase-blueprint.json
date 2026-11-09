@@ -1,0 +1,31 @@
+{
+  "entities": {
+    "User": {
+      "path": "/users/{userId}",
+      "description": "User profile and Google account sync metadata",
+      "fields": {
+        "userId": { "type": "string", "description": "Authenticated Firebase user UID" },
+        "displayName": { "type": "string", "description": "Display name of account owner" },
+        "email": { "type": "string", "description": "Linked Google account email" },
+        "photoUrl": { "type": "string", "description": "Google avatar URL", "optional": true },
+        "isCloudSyncActive": { "type": "boolean", "description": "Flag indicating if 24/7 cloud sync is enabled" },
+        "createdAt": { "type": "timestamp", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "timestamp", "description": "Last update timestamp" }
+      }
+    },
+    "TelemetryLog": {
+      "path": "/users/{userId}/telemetry_logs/{logId}",
+      "description": "24/7 Cloud synchronized battery telemetry log sample",
+      "fields": {
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "timestamp": { "type": "timestamp", "description": "Timestamp of telemetry reading" },
+        "voltageMv": { "type": "number", "description": "Battery voltage in millivolts" },
+        "currentMa": { "type": "number", "description": "Battery current in milliamps" },
+        "temperatureC": { "type": "number", "description": "Battery temperature in Celsius" },
+        "batteryPct": { "type": "number", "description": "Battery charge percentage" },
+        "state": { "type": "string", "description": "Living battery state (STORING, HEATING, COOLING, SLEEP)" },
+        "createdAt": { "type": "timestamp", "description": "Log creation server timestamp" }
+      }
+    }
+  }
+}
