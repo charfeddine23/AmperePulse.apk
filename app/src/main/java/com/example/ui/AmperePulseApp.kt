@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -24,6 +26,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import com.example.ui.components.AdaptiveLiquidDropletSwipeContainer
 import com.example.ui.components.CyberSkinVaultDialog
 import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.LuxurySettingsDrawer
@@ -164,69 +167,94 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    AnimatedContent(
-                        targetState = selectedTab,
-                        transitionSpec = {
-                            val isMovingForward = targetState.ordinal > initialState.ordinal
-                            (slideInHorizontally(
-                                initialOffsetX = { if (isMovingForward) it else -it },
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))).togetherWith(
-                                slideOutHorizontally(
-                                    targetOffsetX = { if (isMovingForward) -it else it },
-                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
-                                ) + fadeOut()
-                            )
+                    AdaptiveLiquidDropletSwipeContainer(
+                        modifier = Modifier.fillMaxSize(),
+                        accentColor = activeAccent,
+                        isDarkMode = isDark,
+                        onSwipeNext = {
+                            val tabs = NavigationTab.values()
+                            val nextIndex = (selectedTab.ordinal + 1).coerceAtMost(tabs.size - 1)
+                            viewModel.selectTab(tabs[nextIndex])
                         },
-                        label = "90HzPageTransition"
-                    ) { tab ->
-                        when (tab) {
-                            NavigationTab.BATTERY -> Page1LivingBatteryScreen(
-                                telemetry = telemetry,
-                                voltageHistory = voltageHistory,
-                                currentHistory = currentHistory,
-                                themeConfig = themeConfig,
-                                prizeRoadData = prizeRoadData,
-                                isAutoSensorMode = isAutoSensorMode,
-                                onSelectLivingState = { viewModel.selectLivingState(it) },
-                                onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) },
-                                onToggleThermalTest = { viewModel.toggleThermalSimulation() }
-                            )
-                            NavigationTab.STATISTICS -> Page2StatisticsScreen(
-                                telemetry = telemetry,
-                                hourlyStats = hourlyStats,
-                                themeConfig = themeConfig,
-                                onResetOrSeedStats = { viewModel.seedOrResetHourlyStats() }
-                            )
-                            NavigationTab.BATTERY_SOH -> Page3BatterySohScreen(
-                                telemetry = telemetry,
-                                themeConfig = themeConfig,
-                                sohPrediction = sohPrediction,
-                                onRecalibrateSoh = { viewModel.recalibrateSohPrediction() }
-                            )
-                            NavigationTab.CABLE_DNA -> Page4CableDnaScreen(
-                                telemetry = telemetry,
-                                themeConfig = themeConfig,
-                                cableResult = cableResult,
-                                onRunDiagnosticSweep = { viewModel.runCableDiagnosticSweep(it) }
-                            )
-                            NavigationTab.MY_SPACE -> Page5MySpaceScreen(
-                                telemetry = telemetry,
-                                voltageHistory = voltageHistory,
-                                currentHistory = currentHistory,
-                                wattageHistory = wattageHistory,
-                                temperatureHistory = temperatureHistory,
-                                sessionLogs = sessionLogs,
-                                themeConfig = themeConfig,
-                                userAccount = userAccount,
-                                onUpdateOwnerName = { viewModel.updateOwnerName(it) },
-                                onAddVitalLog = { title, desc, tag, type ->
-                                    viewModel.addManualLog(title, desc, tag, type)
-                                }
-                            )
+                        onSwipePrevious = {
+                            val tabs = NavigationTab.values()
+                            val prevIndex = (selectedTab.ordinal - 1).coerceAtLeast(0)
+                            viewModel.selectTab(tabs[prevIndex])
+                        }
+                    ) {
+                        AnimatedContent(
+                            targetState = selectedTab,
+                            transitionSpec = {
+                                val isMovingForward = targetState.ordinal > initialState.ordinal
+                                (slideInHorizontally(
+                                    initialOffsetX = { if (isMovingForward) it else -it },
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ) + scaleIn(
+                                    initialScale = 0.94f,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                        stiffness = Spring.StiffnessMediumLow
+                                    )
+                                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))).togetherWith(
+                                    slideOutHorizontally(
+                                        targetOffsetX = { if (isMovingForward) -it else it },
+                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                    ) + scaleOut(
+                                        targetScale = 0.96f,
+                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                    ) + fadeOut()
+                                )
+                            },
+                            label = "90HzAdaptiveDropletPageTransition"
+                        ) { tab ->
+                            when (tab) {
+                                NavigationTab.BATTERY -> Page1LivingBatteryScreen(
+                                    telemetry = telemetry,
+                                    voltageHistory = voltageHistory,
+                                    currentHistory = currentHistory,
+                                    themeConfig = themeConfig,
+                                    prizeRoadData = prizeRoadData,
+                                    isAutoSensorMode = isAutoSensorMode,
+                                    onSelectLivingState = { viewModel.selectLivingState(it) },
+                                    onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) },
+                                    onToggleThermalTest = { viewModel.toggleThermalSimulation() }
+                                )
+                                NavigationTab.STATISTICS -> Page2StatisticsScreen(
+                                    telemetry = telemetry,
+                                    hourlyStats = hourlyStats,
+                                    themeConfig = themeConfig,
+                                    onResetOrSeedStats = { viewModel.seedOrResetHourlyStats() }
+                                )
+                                NavigationTab.BATTERY_SOH -> Page3BatterySohScreen(
+                                    telemetry = telemetry,
+                                    themeConfig = themeConfig,
+                                    sohPrediction = sohPrediction,
+                                    onRecalibrateSoh = { viewModel.recalibrateSohPrediction() }
+                                )
+                                NavigationTab.CABLE_DNA -> Page4CableDnaScreen(
+                                    telemetry = telemetry,
+                                    themeConfig = themeConfig,
+                                    cableResult = cableResult,
+                                    onRunDiagnosticSweep = { viewModel.runCableDiagnosticSweep(it) }
+                                )
+                                NavigationTab.MY_SPACE -> Page5MySpaceScreen(
+                                    telemetry = telemetry,
+                                    voltageHistory = voltageHistory,
+                                    currentHistory = currentHistory,
+                                    wattageHistory = wattageHistory,
+                                    temperatureHistory = temperatureHistory,
+                                    sessionLogs = sessionLogs,
+                                    themeConfig = themeConfig,
+                                    userAccount = userAccount,
+                                    onUpdateOwnerName = { viewModel.updateOwnerName(it) },
+                                    onAddVitalLog = { title, desc, tag, type ->
+                                        viewModel.addManualLog(title, desc, tag, type)
+                                    }
+                                )
+                            }
                         }
                     }
                 }

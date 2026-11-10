@@ -2,9 +2,15 @@ package com.example.ui.components
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -49,6 +55,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
@@ -108,21 +115,61 @@ fun LuxuryTopBar(
                 Spacer(modifier = Modifier.width(8.dp))
                 PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
 
-                if (themeConfig.showFpsOverlay) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isDark) Color(0x33448AFF) else Color(0x1F2962FF))
-                            .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
+                // Dynamic glowing AppTier badge (FREE / VIP / PREMIUM) with fluid neon aura
+                Spacer(modifier = Modifier.width(8.dp))
+                val tier = themeConfig.appTier
+                val tierColor = tier.color
+                val infiniteTransition = rememberInfiniteTransition(label = "tierGlow")
+                val pulseGlow by infiniteTransition.animateFloat(
+                    initialValue = 0.55f,
+                    targetValue = 1.0f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(1200, easing = FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "tierPulse"
+                )
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    tierColor.copy(alpha = if (isDark) 0.28f else 0.16f),
+                                    tierColor.copy(alpha = if (isDark) 0.14f else 0.08f)
+                                )
+                            )
+                        )
+                        .border(
+                            width = 1.1.dp,
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    tierColor.copy(alpha = 0.85f * pulseGlow),
+                                    tierColor.copy(alpha = 0.40f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable { onMenuToggle() }
+                        .padding(horizontal = 7.dp, vertical = 2.5.dp)
+                        .testTag("app_tier_badge")
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(tierColor)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "90 FPS",
+                            text = tier.label,
                             fontFamily = OutfitFontFamily,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            color = accentColor
+                            fontSize = 10.5.sp,
+                            letterSpacing = 0.8.sp,
+                            color = tierColor
                         )
                     }
                 }
@@ -469,16 +516,68 @@ fun LuxurySettingsDrawer(
                         textColor = textColor
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "Live 90 FPS Telemetry HUD",
-                        subtitle = "Show real-time frame rate badge in top bar",
-                        checked = themeConfig.showFpsOverlay,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(showFpsOverlay = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
+                    // App Tier Selector (Free / VIP / Premium)
+                    Text(
+                        text = "APPLICATION TIER (نوع التطبيق)",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
+                        color = textColor
                     )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "اختر صنف الحساب لإعطاء توهج ولون نيون ديناميكي في الشريط العلوي",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.5.sp,
+                        color = TextSlate
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        com.example.data.AppTier.values().forEach { tierOption ->
+                            val isSelected = themeConfig.appTier == tierOption
+                            val tColor = tierOption.color
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(
+                                        if (isSelected) tColor.copy(alpha = if (isDark) 0.28f else 0.16f) else cardBg
+                                    )
+                                    .border(
+                                        1.2.dp,
+                                        if (isSelected) tColor else Color(0x3394A3B8),
+                                        RoundedCornerShape(12.dp)
+                                    )
+                                    .clickable {
+                                        onConfigChange(themeConfig.copy(appTier = tierOption))
+                                    }
+                                    .padding(vertical = 10.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = tierOption.label,
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        letterSpacing = 0.6.sp,
+                                        color = if (isSelected) tColor else TextSlate
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(5.dp)
+                                            .clip(CircleShape)
+                                            .background(if (isSelected) tColor else Color.Transparent)
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(18.dp))
 

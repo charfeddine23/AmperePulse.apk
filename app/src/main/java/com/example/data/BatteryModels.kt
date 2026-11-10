@@ -177,12 +177,23 @@ data class TechCrewMember(
     val isUnlocked: Boolean = false
 )
 
+enum class AppTier(
+    val label: String,
+    val color: Color,
+    val description: String
+) {
+    FREE("FREE", Color(0xFF64748B), "Standard Basic Telemetry"),
+    VIP("VIP", Color(0xFFFF9100), "VIP High-Flow Telemetry & Hologram Unlocked"),
+    PREMIUM("PREMIUM", Color(0xFF00E5FF), "Ultra-Precision 24/7 Quantum Engine Active")
+}
+
 data class GlassThemeConfig(
     val isDarkMode: Boolean = false, // Defaults to Light Neumorphism!
     val glowIntensity: Float = 0.75f,
     val accentColorIndex: Int = 0, // 0 = Royal Blue (#2962FF), 1 = Vibrant Green (#00C853), 2 = Coral Red (#FF3D00), 3 = Violet (#7C4DFF)
     val activeSkinId: String = "obsidian_cyber",
     val customAccentHex: Long? = null,
+    val appTier: AppTier = AppTier.PREMIUM,
     val glassBlurAmount: Float = 0.85f,
     val ambientLiquidWaves: Boolean = true,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,

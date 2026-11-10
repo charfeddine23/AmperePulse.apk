@@ -297,7 +297,7 @@ fun Page1LivingBatteryScreen(
             Spacer(modifier = Modifier.height(12.dp))
         }
 
-        // Live Vital Metrics Row
+        // Live Vital Metrics Row - Harmonized with uniform height and styling
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -330,24 +330,7 @@ fun Page1LivingBatteryScreen(
                 },
                 isDarkMode = isDark,
                 onClick = onToggleThermalTest,
-                subtext = if (telemetry.temperatureC >= 40f) "STRESS > 40°C" else "COOL BLUE"
-            )
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // 4. Harmonized Prize Road Level Section with Dynamic Fill Liquid Effects
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-        ) {
-            PrizeRoadLevelProgressCard(
-                prizeRoadData = prizeRoadData,
-                accentColor = primaryColor,
-                isDarkMode = isDark,
-                glowIntensity = glow,
-                onClick = onNavigateToPrizeRoad
+                subtext = null
             )
         }
     }
