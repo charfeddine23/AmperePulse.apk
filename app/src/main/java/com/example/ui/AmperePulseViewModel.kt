@@ -62,9 +62,20 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         _selectedTab.value = tab
     }
 
+    init {
+        // Apply persisted sound preferences on startup
+        com.example.audio.CyberSoundscapeEngine.isEnabled = _themeConfig.value.soundEffectsEnabled
+    }
+
     fun updateThemeConfig(config: GlassThemeConfig) {
         _themeConfig.value = config
         prefsManager.saveThemeConfig(config)
+        com.example.audio.CyberSoundscapeEngine.isEnabled = config.soundEffectsEnabled
+        if (config.backgroundServiceEnabled) {
+            com.example.service.TelemetryForegroundService.startService(getApplication())
+        } else {
+            com.example.service.TelemetryForegroundService.stopService(getApplication())
+        }
     }
 
     fun toggleSettingsMenu(open: Boolean) {

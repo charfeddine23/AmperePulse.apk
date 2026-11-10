@@ -39,6 +39,8 @@ class SettingsPreferencesManager(context: Context) {
             TemperatureUnit.CELSIUS
         }
 
+        val soundEnabled = prefs.getBoolean(KEY_SOUND_ENABLED, true)
+        val bgServiceEnabled = prefs.getBoolean(KEY_BG_SERVICE_ENABLED, true)
         val alertOn80 = prefs.getBoolean(KEY_ALERT_80, true)
         val alertOnHighTemp = prefs.getBoolean(KEY_ALERT_HIGH_TEMP, true)
         val highTempThreshold = prefs.getFloat(KEY_HIGH_TEMP_THRESHOLD, 42.0f)
@@ -57,6 +59,8 @@ class SettingsPreferencesManager(context: Context) {
             ambientLiquidWaves = ambientLiquidWaves,
             temperatureUnit = temperatureUnit,
             samplingIntervalMs = 1000L,
+            soundEffectsEnabled = soundEnabled,
+            backgroundServiceEnabled = bgServiceEnabled,
             alertOn80Percent = alertOn80,
             alertOnHighTemp = alertOnHighTemp,
             highTempThresholdC = highTempThreshold,
@@ -81,6 +85,8 @@ class SettingsPreferencesManager(context: Context) {
             putFloat(KEY_GLASS_BLUR, config.glassBlurAmount)
             putBoolean(KEY_AMBIENT_WAVES, config.ambientLiquidWaves)
             putString(KEY_TEMP_UNIT, config.temperatureUnit.name)
+            putBoolean(KEY_SOUND_ENABLED, config.soundEffectsEnabled)
+            putBoolean(KEY_BG_SERVICE_ENABLED, config.backgroundServiceEnabled)
             putBoolean(KEY_ALERT_80, config.alertOn80Percent)
             putBoolean(KEY_ALERT_HIGH_TEMP, config.alertOnHighTemp)
             putFloat(KEY_HIGH_TEMP_THRESHOLD, config.highTempThresholdC)
@@ -102,6 +108,8 @@ class SettingsPreferencesManager(context: Context) {
         private const val KEY_GLASS_BLUR = "glass_blur"
         private const val KEY_AMBIENT_WAVES = "ambient_waves"
         private const val KEY_TEMP_UNIT = "temp_unit"
+        private const val KEY_SOUND_ENABLED = "sound_enabled"
+        private const val KEY_BG_SERVICE_ENABLED = "bg_service_enabled"
         private const val KEY_ALERT_80 = "alert_80"
         private const val KEY_ALERT_HIGH_TEMP = "alert_high_temp"
         private const val KEY_HIGH_TEMP_THRESHOLD = "high_temp_threshold"

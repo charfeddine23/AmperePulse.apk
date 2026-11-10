@@ -184,7 +184,7 @@ enum class AppTier(
 ) {
     FREE("FREE", Color(0xFF64748B), "Standard Basic Telemetry"),
     VIP("VIP", Color(0xFFFF9100), "VIP High-Flow Telemetry & Hologram Unlocked"),
-    PREMIUM("PREMIUM", Color(0xFF00E5FF), "Ultra-Precision 24/7 Quantum Engine Active")
+    PREMIUM("PREMIUM", Color(0xFFFFD700), "Ultra-Precision 24/7 Auric Quantum Engine Active")
 }
 
 data class GlassThemeConfig(
@@ -198,6 +198,8 @@ data class GlassThemeConfig(
     val ambientLiquidWaves: Boolean = true,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
     val samplingIntervalMs: Long = 1000L,
+    val soundEffectsEnabled: Boolean = true,
+    val backgroundServiceEnabled: Boolean = true,
     val alertOn80Percent: Boolean = true,
     val alertOnHighTemp: Boolean = true,
     val highTempThresholdC: Float = 42.0f,
@@ -289,16 +291,16 @@ enum class CableDnaTier(
 }
 
 data class CableDiagnosticResult(
-    val resistanceMilliOhms: Int = 118,
-    val voltageDropMv: Int = 142,
-    val measuredVoltageMv: Int = 4180,
-    val measuredCurrentMa: Int = 2340,
-    val maxWattageW: Float = 18.5f,
-    val qualityScore: Int = 96,
+    val resistanceMilliOhms: Int = 0,
+    val voltageDropMv: Int = 0,
+    val measuredVoltageMv: Int = 0,
+    val measuredCurrentMa: Int = 0,
+    val maxWattageW: Float = 0.0f,
+    val qualityScore: Int = 100,
     val tier: CableDnaTier = CableDnaTier.LEGENDARY_ORIGINAL,
-    val usbProtocol: String = "USB-PD 3.0 PPS",
-    val pinIntegrityPercent: Int = 99,
-    val thermalDissipationMilliWatts: Int = 647,
+    val usbProtocol: String = "Standby (Unplugged)",
+    val pinIntegrityPercent: Int = 100,
+    val thermalDissipationMilliWatts: Int = 0,
     val scanTimestamp: Long = System.currentTimeMillis()
 )
 

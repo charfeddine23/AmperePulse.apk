@@ -221,7 +221,7 @@ fun Page5MySpaceScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Left Section: Account Avatar, Status & Local Hardware Badge
+                            // Left Section: Account Avatar & User Name with Verification Badge on the Right
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
@@ -237,97 +237,66 @@ fun Page5MySpaceScreen(
                                 Spacer(modifier = Modifier.width(12.dp))
 
                                 Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // User Name with Verified Badge on its right
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         Text(
-                                            text = "حساب المستخدم",
+                                            text = userAccount.ownerName,
                                             fontFamily = OutfitFontFamily,
                                             fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp,
+                                            fontSize = 17.sp,
+                                            letterSpacing = 0.2.sp,
                                             color = textColor
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        PulsingNeonDot(
-                                            color = animatedAmbientColor,
-                                            sizeDp = 6.dp
+                                        Icon(
+                                            imageVector = Icons.Default.Verified,
+                                            contentDescription = "Verified Account",
+                                            tint = themeConfig.appTier.color,
+                                            modifier = Modifier.size(17.dp)
                                         )
                                     }
 
-                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(2.dp))
 
-                                    // Local Hardware Telemetry Badge
-                                    Box(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(TactileGreen.copy(alpha = if (isDark) 0.22f else 0.12f))
-                                            .border(
-                                                1.dp,
-                                                TactileGreen.copy(alpha = 0.5f),
-                                                RoundedCornerShape(8.dp)
-                                            )
-                                            .clickable { showProfileEditDialog = true }
-                                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Default.CheckCircle,
-                                                contentDescription = null,
-                                                tint = TactileGreen,
-                                                modifier = Modifier.size(11.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                text = "حساب عتاد نشط • محلي 100%",
-                                                fontFamily = OutfitFontFamily,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 9.sp,
-                                                color = TactileGreen
-                                            )
-                                        }
+                                    // Account Tier Label with dynamic glowing color
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(CircleShape)
+                                                .background(themeConfig.appTier.color)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = "Ampere Pulse • ${themeConfig.appTier.label}",
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 11.sp,
+                                            color = themeConfig.appTier.color
+                                        )
                                     }
                                 }
                             }
 
                             Spacer(modifier = Modifier.width(10.dp))
 
-                            // Right Section: اسم صاحب الحساب (Prominently on the Right Side)
-                            Column(
-                                horizontalAlignment = Alignment.End
+                            // Right Section: Quick Edit Button
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(themeConfig.appTier.color.copy(alpha = if (isDark) 0.20f else 0.12f))
+                                    .border(1.dp, themeConfig.appTier.color.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                                    .clickable { showProfileEditDialog = true }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Verified,
-                                        contentDescription = null,
-                                        tint = animatedAmbientColor,
-                                        modifier = Modifier.size(15.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = userAccount.ownerName,
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp,
-                                        letterSpacing = 0.3.sp,
-                                        color = textColor
-                                    )
-                                }
-
                                 Text(
-                                    text = "صاحب الحساب",
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = TextSlate
-                                )
-
-                                Text(
-                                    text = "Ampere Pulse • ${userAccount.accountTier}",
-                                    fontFamily = PlusJakartaSansFontFamily,
-                                    fontSize = 9.sp,
-                                    color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B),
-                                    maxLines = 1
+                                    text = "تعديل",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    color = themeConfig.appTier.color
                                 )
                             }
                         }

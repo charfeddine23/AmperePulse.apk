@@ -667,7 +667,29 @@ fun LuxurySettingsDrawer(
 
                     Spacer(modifier = Modifier.height(18.dp))
 
-                    // Safety Toggles
+                    // Safety & Audio Toggles
+                    DrawerToggleRow(
+                        title = "Futuristic Soundscape Effects",
+                        subtitle = "Play procedural audio cues on cable connect, sweeps, and state changes",
+                        checked = themeConfig.soundEffectsEnabled,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(soundEffectsEnabled = it)) },
+                        accentColor = accentColor,
+                        textColor = textColor
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    DrawerToggleRow(
+                        title = "24/7 Background Telemetry Service",
+                        subtitle = "Run persistent foreground service to sample battery data in background/Doze",
+                        checked = themeConfig.backgroundServiceEnabled,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(backgroundServiceEnabled = it)) },
+                        accentColor = accentColor,
+                        textColor = textColor
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     DrawerToggleRow(
                         title = "80% Battery Longevity Alert",
                         subtitle = "Chime when cell reaches 80% to protect lithium matrix",

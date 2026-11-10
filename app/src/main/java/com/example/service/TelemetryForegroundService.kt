@@ -172,5 +172,12 @@ class TelemetryForegroundService : Service() {
                 // Safeguard against BackgroundServiceStartNotAllowedException on Android 12+
             }
         }
+
+        fun stopService(context: Context) {
+            try {
+                val intent = Intent(context, TelemetryForegroundService::class.java)
+                context.stopService(intent)
+            } catch (_: Exception) {}
+        }
     }
 }

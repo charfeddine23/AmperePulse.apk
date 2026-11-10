@@ -356,14 +356,29 @@ class BatteryMonitorRepository(
             } catch (_: Exception) {}
         }
 
-        // Trigger Cable DNA and Audio/Haptic cues on Charger Connect
-        val isNowCharging = telemetry.status == BatteryStatus.CHARGING || telemetry.status == BatteryStatus.FULL || telemetry.currentMa > 0
+        // Trigger Cable DNA and Audio/Haptic cues on Charger Connect / Disconnect
+        val isNowCharging = telemetry.status == BatteryStatus.CHARGING || telemetry.status == BatteryStatus.FULL || telemetry.plugType != ChargePlug.NONE || telemetry.currentMa > 0
         if (previousIsCharging != isNowCharging) {
             previousIsCharging = isNowCharging
             if (isNowCharging) {
                 runCableDiagnosticSweep()
                 com.example.audio.CyberSoundscapeEngine.playDiagnosticSweep()
                 com.example.audio.CyberHapticsEngine.triggerElectricSpark(context)
+            } else {
+                // When unplugged, reset cable metrics cleanly to 0
+                _cableResult.value = CableDiagnosticResult(
+                    resistanceMilliOhms = 0,
+                    voltageDropMv = 0,
+                    measuredVoltageMv = telemetry.voltageMv,
+                    measuredCurrentMa = 0,
+                    maxWattageW = 0f,
+                    qualityScore = 100,
+                    tier = CableDnaTier.LEGENDARY_ORIGINAL,
+                    usbProtocol = "Standby (Unplugged)",
+                    pinIntegrityPercent = 100,
+                    thermalDissipationMilliWatts = 0,
+                    scanTimestamp = System.currentTimeMillis()
+                )
             }
         }
 
@@ -660,35 +675,47 @@ class BatteryMonitorRepository(
 
     fun runCableDiagnosticSweep(tierOverride: CableDnaTier? = null) {
         val currentV = _telemetry.value.voltageMv
-        val currentI = abs(_telemetry.value.currentMa).coerceAtLeast(100)
+        val currentI = abs(_telemetry.value.currentMa)
+        val isPlugged = _telemetry.value.plugType != ChargePlug.NONE || _telemetry.value.status == BatteryStatus.CHARGING || currentI > 200
+
+        if (!isPlugged) {
+            _cableResult.value = CableDiagnosticResult(
+                resistanceMilliOhms = 0,
+                voltageDropMv = 0,
+                measuredVoltageMv = currentV,
+                measuredCurrentMa = 0,
+                maxWattageW = 0f,
+                qualityScore = 100,
+                tier = CableDnaTier.LEGENDARY_ORIGINAL,
+                usbProtocol = "Standby (Unplugged)",
+                pinIntegrityPercent = 100,
+                thermalDissipationMilliWatts = 0,
+                scanTimestamp = System.currentTimeMillis()
+            )
+            return
+        }
+
+        // Live hardware Ohm's law calculation: R = ΔV / I
+        val nominalSourceMv = 5000 // USB 5V reference rail
+        val measuredSagMv = (nominalSourceMv - currentV).coerceIn(40, 850)
+        val effectiveI = currentI.coerceAtLeast(400)
+        val calculatedResistance = ((measuredSagMv.toFloat() / effectiveI.toFloat()) * 1000f).toInt().coerceIn(75, 620)
 
         val evaluatedTier = tierOverride ?: when {
-            _telemetry.value.temperatureC > 38f -> CableDnaTier.DANGEROUS_COUNTERFEIT
-            currentI >= 2000 && currentV >= 4100 -> CableDnaTier.LEGENDARY_ORIGINAL
-            currentI >= 1200 -> CableDnaTier.CERTIFIED_FAST
+            calculatedResistance > 450 || _telemetry.value.temperatureC > 38f -> CableDnaTier.DANGEROUS_COUNTERFEIT
+            calculatedResistance <= 140 -> CableDnaTier.LEGENDARY_ORIGINAL
+            calculatedResistance <= 260 -> CableDnaTier.CERTIFIED_FAST
             else -> CableDnaTier.DEGRADED_STANDARD
         }
 
-        val resistance = when (evaluatedTier) {
-            CableDnaTier.LEGENDARY_ORIGINAL -> 108
-            CableDnaTier.CERTIFIED_FAST -> 195
-            CableDnaTier.DEGRADED_STANDARD -> 360
-            CableDnaTier.DANGEROUS_COUNTERFEIT -> 580
-        }
-        val drop = when (evaluatedTier) {
-            CableDnaTier.LEGENDARY_ORIGINAL -> 115
-            CableDnaTier.CERTIFIED_FAST -> 230
-            CableDnaTier.DEGRADED_STANDARD -> 440
-            CableDnaTier.DANGEROUS_COUNTERFEIT -> 760
-        }
-
-        val dissipationMw = ((currentI.toDouble() / 1000.0) * (currentI.toDouble() / 1000.0) * (resistance.toDouble() / 1000.0) * 1000.0).toInt()
+        val dissipationMw = ((effectiveI.toDouble() / 1000.0) * (effectiveI.toDouble() / 1000.0) * (calculatedResistance.toDouble() / 1000.0) * 1000.0).toInt()
 
         val result = CableDiagnosticResult(
-            resistanceMilliOhms = resistance,
-            voltageDropMv = drop,
+            resistanceMilliOhms = calculatedResistance,
+            voltageDropMv = measuredSagMv,
             measuredVoltageMv = currentV,
-            measuredCurrentMa = currentI,
+            measuredCurrentMa = effectiveI,
+            maxWattageW = (currentV / 1000f) * (effectiveI / 1000f),
             qualityScore = when (evaluatedTier) {
                 CableDnaTier.LEGENDARY_ORIGINAL -> 98
                 CableDnaTier.CERTIFIED_FAST -> 89
@@ -703,7 +730,7 @@ class BatteryMonitorRepository(
 
         addManualSessionLog(
             title = "Cable DNA Audit: ${evaluatedTier.title}",
-            desc = "Internal Resistance ${resistance}mΩ, Sag -${drop}mV. Tier: ${evaluatedTier.grade} (${evaluatedTier.xpMultiplier}x XP).",
+            desc = "Internal Resistance ${calculatedResistance}mΩ, Sag -${measuredSagMv}mV. Classification: ${evaluatedTier.grade}.",
             statTag = evaluatedTier.grade,
             type = if (evaluatedTier.isDangerous) "warning" else "check"
         )
@@ -786,13 +813,18 @@ class BatteryMonitorRepository(
         val now = System.currentTimeMillis()
         val calendar = java.util.Calendar.getInstance()
         val stats = mutableListOf<com.example.data.local.HourlyBatteryStatEntity>()
+        val timeFormat = java.text.SimpleDateFormat("hh:mm:ss a", java.util.Locale.US)
+        val dateFormat = java.text.SimpleDateFormat("EEEE, MMM dd, yyyy", java.util.Locale.US)
 
         for (i in 23 downTo 0) {
-            val hourTime = now - (i * 3600_000L)
-            calendar.timeInMillis = hourTime
+            val hourStart = now - (i * 3600_000L)
+            val hourEnd = hourStart + 3599_000L
+            calendar.timeInMillis = hourStart
             val hourOfDay = calendar.get(java.util.Calendar.HOUR_OF_DAY)
-            val timeStr = String.format("%02d:00 - %02d:59", hourOfDay, hourOfDay)
-            val dateStr = java.text.SimpleDateFormat("MMM dd", java.util.Locale.US).format(java.util.Date(hourTime))
+            
+            // Ultra-precise time window: e.g. "10:00:00 AM → 10:59:59 AM"
+            val timeStr = "${timeFormat.format(java.util.Date(hourStart))} → ${timeFormat.format(java.util.Date(hourEnd))}"
+            val dateStr = dateFormat.format(java.util.Date(hourStart))
 
             // Realistic charge/discharge profile based on diurnal cycle
             val isCharging = hourOfDay in 1..6 || hourOfDay in 14..15
@@ -828,7 +860,7 @@ class BatteryMonitorRepository(
             stats.add(
                 com.example.data.local.HourlyBatteryStatEntity(
                     id = (24 - i).toLong(),
-                    hourTimestamp = hourTime,
+                    hourTimestamp = hourStart,
                     formattedTime = timeStr,
                     formattedDate = dateStr,
                     avgVoltageMv = avgV,

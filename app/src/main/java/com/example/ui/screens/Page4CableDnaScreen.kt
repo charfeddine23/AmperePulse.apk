@@ -106,42 +106,7 @@ fun Page4CableDnaScreen(
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
 
     var isScanning by remember { mutableStateOf(false) }
-    var selectedTierOverride by remember { mutableStateOf<CableDnaTier?>(null) }
-    val activeResult = remember(cableResult, selectedTierOverride) {
-        selectedTierOverride?.let { tier ->
-            when (tier) {
-                CableDnaTier.LEGENDARY_ORIGINAL -> cableResult.copy(
-                    tier = tier,
-                    resistanceMilliOhms = 104,
-                    voltageDropMv = 115,
-                    qualityScore = 98,
-                    thermalDissipationMilliWatts = 580
-                )
-                CableDnaTier.CERTIFIED_FAST -> cableResult.copy(
-                    tier = tier,
-                    resistanceMilliOhms = 195,
-                    voltageDropMv = 240,
-                    qualityScore = 88,
-                    thermalDissipationMilliWatts = 1080
-                )
-                CableDnaTier.DEGRADED_STANDARD -> cableResult.copy(
-                    tier = tier,
-                    resistanceMilliOhms = 360,
-                    voltageDropMv = 440,
-                    qualityScore = 65,
-                    thermalDissipationMilliWatts = 1970
-                )
-                CableDnaTier.DANGEROUS_COUNTERFEIT -> cableResult.copy(
-                    tier = tier,
-                    resistanceMilliOhms = 580,
-                    voltageDropMv = 780,
-                    qualityScore = 32,
-                    thermalDissipationMilliWatts = 3450
-                )
-            }
-        } ?: cableResult
-    }
-
+    val activeResult = cableResult
     val tier = activeResult.tier
     val tierColor = tier.badgeColor
 
@@ -350,7 +315,7 @@ fun Page4CableDnaScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Classification Tier Badge & XP Multiplier Banner
+                    // Classification Tier Badge & Status Banner (No XP)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -374,14 +339,14 @@ fun Page4CableDnaScreen(
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
-                                        text = tier.title,
+                                        text = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "شاحن غير موصول (0 mΩ)" else tier.title,
                                         fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 14.sp,
                                         color = textColor
                                     )
                                     Text(
-                                        text = tier.grade,
+                                        text = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "وصل الشاحن لبدء الفحص التلقائي الفوري" else tier.grade,
                                         fontFamily = PlusJakartaSansFontFamily,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp,
@@ -390,7 +355,7 @@ fun Page4CableDnaScreen(
                                 }
                             }
 
-                            // XP Multiplier Badge
+                            // Active Sensor Auto Status Chip
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
@@ -398,10 +363,10 @@ fun Page4CableDnaScreen(
                                     .padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = "${tier.xpMultiplier}x XP",
+                                    text = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "STANDBY" else "100% AUTO",
                                     fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.sp,
                                     color = Color.White
                                 )
                             }
@@ -412,7 +377,9 @@ fun Page4CableDnaScreen(
 
                     // Tier Description Box
                     Text(
-                        text = tier.description,
+                        text = if (telemetry.plugType == com.example.data.ChargePlug.NONE)
+                            "المستشعرات في وضع الاستعداد بانتظار توصيل كابل الشحن لحساب المقاومة وهبوط الجهد فورياً بدقة متناهية."
+                        else tier.description,
                         fontFamily = PlusJakartaSansFontFamily,
                         fontSize = 11.sp,
                         color = subTextColor,
@@ -439,8 +406,8 @@ fun Page4CableDnaScreen(
                 CableMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "VOLTAGE SAG",
-                    value = "-${activeResult.voltageDropMv} mV",
-                    subtext = "Drop from nominal 5.0V",
+                    value = if (activeResult.voltageDropMv > 0) "-${activeResult.voltageDropMv} mV" else "0 mV",
+                    subtext = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "No load connected" else "Drop from 5.0V line",
                     accentColor = if (activeResult.voltageDropMv > 500) TactileCoralRed else TactileRoyalBlue,
                     isDark = isDark
                 )
@@ -464,8 +431,8 @@ fun Page4CableDnaScreen(
                 CableMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "PROTOCOL MATRIX",
-                    value = activeResult.usbProtocol,
-                    subtext = "CC1 / CC2 Handshake OK",
+                    value = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "Disconnected" else activeResult.usbProtocol,
+                    subtext = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "Line Idle (0 mA)" else "Handshake Active",
                     accentColor = TactileCyan,
                     isDark = isDark
                 )
@@ -474,8 +441,8 @@ fun Page4CableDnaScreen(
                 CableMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "CABLE SCORE",
-                    value = "${activeResult.qualityScore} / 100",
-                    subtext = "Pin Integrity ${activeResult.pinIntegrityPercent}%",
+                    value = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "-- / 100" else "${activeResult.qualityScore} / 100",
+                    subtext = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "Connect Charger" else "Pin Integrity ${activeResult.pinIntegrityPercent}%",
                     accentColor = tierColor,
                     isDark = isDark
                 )
@@ -484,85 +451,19 @@ fun Page4CableDnaScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 4. Interactive Diagnostic Controls & Cable Test Chips
-        Column(
+        // 4. Auto Refresh Real-Time Sweep Button (No simulation chips, 100% automated)
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Test Cable Switch Chips
-            Text(
-                text = "SIMULATE HARDWARE CABLE SWAP:",
-                fontFamily = OutfitFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 0.5.sp,
-                color = TextSlate
-            )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                CableDnaTier.entries.forEach { t ->
-                    val isSelected = (selectedTierOverride ?: tier) == t
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                if (isSelected) t.badgeColor.copy(alpha = if (isDark) 0.28f else 0.16f)
-                                else (if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
-                            )
-                            .border(
-                                width = if (isSelected) 1.5.dp else 1.dp,
-                                color = if (isSelected) t.badgeColor else (if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)),
-                                shape = RoundedCornerShape(10.dp)
-                            )
-                            .clickable {
-                                selectedTierOverride = t
-                                if (t.isDangerous) {
-                                    CyberHapticsEngine.triggerThermalWarning(context)
-                                    CyberSoundscapeEngine.playThermalAlert()
-                                } else {
-                                    CyberHapticsEngine.triggerElectricSpark(context)
-                                    CyberSoundscapeEngine.playElectricSpark()
-                                }
-                            }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(t.badgeColor)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = t.grade,
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                color = if (isSelected) t.badgeColor else textColor
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Action Button: Full Diagnostic Sweep
             Button(
                 onClick = {
                     scope.launch {
                         isScanning = true
                         CyberSoundscapeEngine.playDiagnosticSweep()
                         CyberHapticsEngine.triggerTactileTick(context)
-                        delay(1200)
+                        delay(900)
                         isScanning = false
                         if (tier.isDangerous) {
                             CyberHapticsEngine.triggerThermalWarning(context)
@@ -571,7 +472,7 @@ fun Page4CableDnaScreen(
                             CyberHapticsEngine.triggerBenchmarkSuccess(context)
                             CyberSoundscapeEngine.playCableTierLegendary()
                         }
-                        onRunDiagnosticSweep(selectedTierOverride)
+                        onRunDiagnosticSweep(null)
                     }
                 },
                 modifier = Modifier
@@ -591,7 +492,7 @@ fun Page4CableDnaScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isScanning) "MEASURING RESISTANCE & VOLTAGE SAG..." else "SCAN CABLE DNA & CHARGER",
+                        text = if (isScanning) "SAMPLING HARDWARE REGISTERS..." else "RE-SCAN CABLE & CHARGER NOW",
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
