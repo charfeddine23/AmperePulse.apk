@@ -26,7 +26,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.QueryStats
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
@@ -54,10 +54,10 @@ import com.example.ui.theme.TextWhite
 
 enum class NavigationTab(val label: String, val icon: ImageVector, val tag: String) {
     BATTERY("Battery", Icons.Default.Bolt, "nav_battery"),
-    STREAKS("Streaks", Icons.Default.Shield, "nav_streaks"),
+    STATISTICS("Stats", Icons.Default.QueryStats, "nav_statistics"),
     BATTERY_SOH("Cell SOH", Icons.Default.HealthAndSafety, "nav_soh"),
     CABLE_DNA("Cable DNA", Icons.Default.Cable, "nav_cable_dna"),
-    MY_SPACE("My Space", Icons.Default.QueryStats, "nav_my_space")
+    MY_SPACE("My Space", Icons.Default.Tune, "nav_my_space")
 }
 
 /**

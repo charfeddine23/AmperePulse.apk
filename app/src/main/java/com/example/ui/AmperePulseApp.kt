@@ -24,13 +24,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import com.example.ui.components.CyberSkinVaultDialog
 import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.LuxurySettingsDrawer
 import com.example.ui.components.LuxuryTopBar
 import com.example.ui.components.NavigationTab
 import com.example.ui.components.thermalLiquidGlassBackground
 import com.example.ui.screens.Page1LivingBatteryScreen
-import com.example.ui.screens.Page2StreaksAndEggScreen
+import com.example.ui.screens.Page2StatisticsScreen
 import com.example.ui.screens.Page3BatterySohScreen
 import com.example.ui.screens.Page4CableDnaScreen
 import com.example.ui.screens.Page5MySpaceScreen
@@ -53,10 +54,12 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val techCrew by viewModel.techCrew.collectAsState()
     val cableResult by viewModel.cableResult.collectAsState()
     val sohPrediction by viewModel.sohPrediction.collectAsState()
+    val hourlyStats by viewModel.hourlyStats.collectAsState()
 
     val selectedTab by viewModel.selectedTab.collectAsState()
     val themeConfig by viewModel.themeConfig.collectAsState()
     val isSettingsOpen by viewModel.isSettingsMenuOpen.collectAsState()
+    val isSkinVaultOpen by viewModel.isSkinVaultOpen.collectAsState()
     val isAutoSensorMode by viewModel.isAutoSensorMode.collectAsState()
     val userAccount by viewModel.userAccount.collectAsState()
 
@@ -136,12 +139,12 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Luxury 3-Line Top Settings Header Bar with Dark Mode Toggle
+                // Luxury 3-Line Top Settings Header Bar with Dark Mode Toggle & Cyber Vault Button
                 LuxuryTopBar(
                     title = "AMPERE PULSE",
                     subtitle = when (selectedTab) {
                         NavigationTab.BATTERY -> "PAGE 1: LIVING BATTERY MATRIX"
-                        NavigationTab.STREAKS -> "PAGE 2: STREAKS & CYBER INCUBATOR"
+                        NavigationTab.STATISTICS -> "PAGE 2: HOURLY BATTERY STATISTICS (ROOM WAL)"
                         NavigationTab.BATTERY_SOH -> "PAGE 3: BATTERY SOH & CYCLE PREDICTOR"
                         NavigationTab.CABLE_DNA -> "PAGE 4: CABLE DNA & CHARGER ANALYZER"
                         NavigationTab.MY_SPACE -> "PAGE 5: TELEMETRY SPACE & LOG"
@@ -151,7 +154,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     themeConfig = themeConfig,
                     onToggleDarkMode = {
                         viewModel.updateThemeConfig(themeConfig.copy(isDarkMode = !themeConfig.isDarkMode))
-                    }
+                    },
+                    onOpenSkinVault = { viewModel.toggleSkinVault(true) }
                 )
 
                 // 5-Page Content with High-Performance Spring Transitions
@@ -191,12 +195,11 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                 onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) },
                                 onToggleThermalTest = { viewModel.toggleThermalSimulation() }
                             )
-                            NavigationTab.STREAKS -> Page2StreaksAndEggScreen(
-                                streakData = streakData,
-                                eggData = eggData,
+                            NavigationTab.STATISTICS -> Page2StatisticsScreen(
+                                telemetry = telemetry,
+                                hourlyStats = hourlyStats,
                                 themeConfig = themeConfig,
-                                onHatchEgg = { viewModel.hatchEgg() },
-                                onRepairShield = { viewModel.repairShield() }
+                                onResetOrSeedStats = { viewModel.seedOrResetHourlyStats() }
                             )
                             NavigationTab.BATTERY_SOH -> Page3BatterySohScreen(
                                 telemetry = telemetry,
@@ -243,7 +246,18 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 isOpen = isSettingsOpen,
                 onClose = { viewModel.toggleSettingsMenu(false) },
                 themeConfig = themeConfig,
-                onConfigChange = { viewModel.updateThemeConfig(it) }
+                onConfigChange = { viewModel.updateThemeConfig(it) },
+                onOpenSkinVault = { viewModel.toggleSkinVault(true) }
+            )
+
+            // Cyber Skin (Liquid Glass Vault) Modal Dialog - متجر الأقنعة والثيمات السيبرانية
+            CyberSkinVaultDialog(
+                isOpen = isSkinVaultOpen,
+                onClose = { viewModel.toggleSkinVault(false) },
+                themeConfig = themeConfig,
+                onEquipSkin = { skin ->
+                    viewModel.equipCyberSkin(skin)
+                }
             )
         }
     }

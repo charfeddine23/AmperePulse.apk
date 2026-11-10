@@ -12,13 +12,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * ultra-fast, crash-resilient 24/7 background writes without database locks.
  */
 @Database(
-    entities = [TelemetryLogEntity::class],
-    version = 1,
+    entities = [TelemetryLogEntity::class, HourlyBatteryStatEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class AmpereDatabase : RoomDatabase() {
 
     abstract fun telemetryLogDao(): TelemetryLogDao
+    abstract fun hourlyBatteryStatDao(): HourlyBatteryStatDao
 
     companion object {
         @Volatile
@@ -40,7 +41,7 @@ abstract class AmpereDatabase : RoomDatabase() {
                             db.query("PRAGMA synchronous=NORMAL;").close()
                         }
                     })
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                 INSTANCE = instance
                 instance

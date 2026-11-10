@@ -42,6 +42,7 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     val userAccount: StateFlow<com.example.data.UserAccount> = repository.userAccount
     val cableResult: StateFlow<com.example.data.CableDiagnosticResult> = repository.cableResult
     val sohPrediction: StateFlow<com.example.data.BatterySohPrediction> = repository.sohPrediction
+    val hourlyStats: StateFlow<List<com.example.data.local.HourlyBatteryStatEntity>> = repository.hourlyStats
 
     private val _selectedTab = MutableStateFlow(NavigationTab.BATTERY)
     val selectedTab: StateFlow<NavigationTab> = _selectedTab.asStateFlow()
@@ -51,6 +52,9 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     private val _isSettingsMenuOpen = MutableStateFlow(false)
     val isSettingsMenuOpen: StateFlow<Boolean> = _isSettingsMenuOpen.asStateFlow()
+
+    private val _isSkinVaultOpen = MutableStateFlow(false)
+    val isSkinVaultOpen: StateFlow<Boolean> = _isSkinVaultOpen.asStateFlow()
 
     fun selectTab(tab: NavigationTab) {
         _selectedTab.value = tab
@@ -62,6 +66,30 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleSettingsMenu(open: Boolean) {
         _isSettingsMenuOpen.value = open
+    }
+
+    fun toggleSkinVault(open: Boolean) {
+        _isSkinVaultOpen.value = open
+    }
+
+    fun equipCyberSkin(skin: com.example.data.CyberSkin) {
+        val argb = (skin.primaryColor.value shr 32).toLong()
+        _themeConfig.value = _themeConfig.value.copy(
+            activeSkinId = skin.id,
+            customAccentHex = argb,
+            glowIntensity = skin.glowIntensity,
+            isDarkMode = if (skin.isDarkRecommended) true else _themeConfig.value.isDarkMode
+        )
+        repository.addManualSessionLog(
+            title = "Cyber Skin Equipped: ${skin.name}",
+            desc = "Liquid Glass holographic aesthetic applied. Aura: ${skin.tag} (${skin.codename}).",
+            statTag = skin.tag,
+            type = "check"
+        )
+    }
+
+    fun seedOrResetHourlyStats() {
+        repository.seedOrResetHourlyStats()
     }
 
     fun selectLivingState(state: LivingBatteryState?) {

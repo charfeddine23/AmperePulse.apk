@@ -76,10 +76,14 @@ class BatteryMonitorRepository(
     private var simulatedTempDelta = 0.0f
     private var simTick = 0L
 
+    private val _hourlyStats = MutableStateFlow<List<com.example.data.local.HourlyBatteryStatEntity>>(emptyList())
+    val hourlyStats: StateFlow<List<com.example.data.local.HourlyBatteryStatEntity>> = _hourlyStats.asStateFlow()
+
     init {
         initHistorySeed()
         initSessionLogsSeed()
         initTechCrewSeed()
+        initHourlyStatsFromDatabase()
         startPolling()
     }
 
@@ -739,5 +743,115 @@ class BatteryMonitorRepository(
             false -> 0.0f  // Cool blue nominal ~28.5°C
             null -> if (simulatedTempDelta > 5f) 0.0f else 13.5f
         }
+    }
+
+    private fun initHourlyStatsFromDatabase() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val db = com.example.data.local.AmpereDatabase.getInstance(context)
+                val dao = db.hourlyBatteryStatDao()
+
+                // If DB is empty, seed 24 hours of realistic hourly logs
+                val count = dao.getCount()
+                if (count == 0) {
+                    seed24HoursTelemetryData(dao)
+                }
+
+                // Collect reactive Flow from Room WAL
+                dao.getAllHourlyStats().collect { list ->
+                    _hourlyStats.value = list
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun seedOrResetHourlyStats() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val db = com.example.data.local.AmpereDatabase.getInstance(context)
+                val dao = db.hourlyBatteryStatDao()
+                dao.clearAll()
+                seed24HoursTelemetryData(dao)
+                addManualSessionLog(
+                    title = "Hourly Room WAL Reset",
+                    desc = "Re-seeded 24-hour battery statistical archive with high-fidelity telemetry points.",
+                    statTag = "24 Records",
+                    type = "check"
+                )
+            } catch (_: Exception) {}
+        }
+    }
+
+    private suspend fun seed24HoursTelemetryData(dao: com.example.data.local.HourlyBatteryStatDao) {
+        val now = System.currentTimeMillis()
+        val calendar = java.util.Calendar.getInstance()
+        val stats = mutableListOf<com.example.data.local.HourlyBatteryStatEntity>()
+
+        for (i in 23 downTo 0) {
+            val hourTime = now - (i * 3600_000L)
+            calendar.timeInMillis = hourTime
+            val hourOfDay = calendar.get(java.util.Calendar.HOUR_OF_DAY)
+            val timeStr = String.format("%02d:00 - %02d:59", hourOfDay, hourOfDay)
+            val dateStr = java.text.SimpleDateFormat("MMM dd", java.util.Locale.US).format(java.util.Date(hourTime))
+
+            // Realistic charge/discharge profile based on diurnal cycle
+            val isCharging = hourOfDay in 1..6 || hourOfDay in 14..15
+            val avgV = if (isCharging) 4180 + (hourOfDay * 8) else 3920 - (hourOfDay * 5)
+            val minV = avgV - 45
+            val maxV = avgV + 55
+
+            val avgI = if (isCharging) 2100 + ((i % 5) * 120) else -380 - ((i % 7) * 45)
+            val minI = if (isCharging) 1850 else -620
+            val maxI = if (isCharging) 2650 else -180
+
+            val avgT = if (isCharging) 33.5f + ((i % 4) * 0.8f) else 28.2f + ((i % 3) * 0.5f)
+            val maxT = avgT + 1.8f
+            val avgWatt = (avgV / 1000f) * (kotlin.math.abs(avgI) / 1000f)
+
+            val startPct = if (isCharging) (30 + (hourOfDay * 8)).coerceIn(15, 95) else (95 - (i * 3)).coerceIn(12, 100)
+            val endPct = if (isCharging) (startPct + 18).coerceIn(15, 100) else (startPct - 4).coerceIn(10, 100)
+            val netMah = if (isCharging) 1450 + (i * 35) else -320 - (i * 15)
+
+            val dominantState = if (isCharging) {
+                if (avgT > 36.5f) "OVERDRIVE_HEATING" else "ENERGY_STORING"
+            } else {
+                if (hourOfDay in 2..6) "DEEP_SLEEP" else "CRYOGENIC_COOLING"
+            }
+
+            val dominantLabel = when (dominantState) {
+                "ENERGY_STORING" -> "Energy Storing"
+                "OVERDRIVE_HEATING" -> "Thermal Overdrive"
+                "DEEP_SLEEP" -> "Deep Sleep Siphon"
+                else -> "Cryogenic Cool"
+            }
+
+            stats.add(
+                com.example.data.local.HourlyBatteryStatEntity(
+                    id = (24 - i).toLong(),
+                    hourTimestamp = hourTime,
+                    formattedTime = timeStr,
+                    formattedDate = dateStr,
+                    avgVoltageMv = avgV,
+                    minVoltageMv = minV,
+                    maxVoltageMv = maxV,
+                    avgCurrentMa = avgI,
+                    minCurrentMa = minI,
+                    maxCurrentMa = maxI,
+                    avgTemperatureC = avgT,
+                    maxTemperatureC = maxT,
+                    avgWattageW = avgWatt,
+                    startBatteryPct = startPct,
+                    endBatteryPct = endPct,
+                    netMahFlow = netMah,
+                    dominantState = dominantState,
+                    dominantStateLabel = dominantLabel,
+                    sampleCount = 360,
+                    isChargingHour = isCharging,
+                    screenOnDurationMinutes = if (isCharging) 8 else (15 + (i % 25))
+                )
+            )
+        }
+
+        dao.insertAll(stats)
     }
 }

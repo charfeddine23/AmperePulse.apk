@@ -181,6 +181,8 @@ data class GlassThemeConfig(
     val isDarkMode: Boolean = false, // Defaults to Light Neumorphism!
     val glowIntensity: Float = 0.75f,
     val accentColorIndex: Int = 0, // 0 = Royal Blue (#2962FF), 1 = Vibrant Green (#00C853), 2 = Coral Red (#FF3D00), 3 = Violet (#7C4DFF)
+    val activeSkinId: String = "obsidian_cyber",
+    val customAccentHex: Long? = null,
     val glassBlurAmount: Float = 0.85f,
     val ambientLiquidWaves: Boolean = true,
     val temperatureUnit: TemperatureUnit = TemperatureUnit.CELSIUS,
@@ -193,12 +195,16 @@ data class GlassThemeConfig(
     val showFpsOverlay: Boolean = true
 ) {
     val accentColor: Color
-        get() = when (accentColorIndex) {
-            0 -> TactileRoyalBlue // #2962FF
-            1 -> TactileGreen     // #00C853
-            2 -> TactileCoralRed  // #FF3D00
-            3 -> TactileViolet    // #7C4DFF
-            else -> TactileRoyalBlue
+        get() = if (customAccentHex != null) {
+            Color(customAccentHex)
+        } else {
+            when (accentColorIndex) {
+                0 -> TactileRoyalBlue // #2962FF
+                1 -> TactileGreen     // #00C853
+                2 -> TactileCoralRed  // #FF3D00
+                3 -> TactileViolet    // #7C4DFF
+                else -> TactileRoyalBlue
+            }
         }
 
     val accentName: String
@@ -207,7 +213,7 @@ data class GlassThemeConfig(
             1 -> "Tactile Green (#00C853)"
             2 -> "Coral Red (#FF3D00)"
             3 -> "Cosmic Violet (#7C4DFF)"
-            else -> "Royal Blue"
+            else -> "Custom Cyber Skin"
         }
 }
 
@@ -310,3 +316,108 @@ data class BatterySohPrediction(
     val projectedReplacementDate: String = "September 2028",
     val chemistryType: String = "Li-Poly Solid Matrix (NMC 811)"
 )
+
+/**
+ * Cyber Skin Definition for Liquid Glass Vault.
+ */
+data class CyberSkin(
+    val id: String,
+    val name: String,
+    val codename: String,
+    val themeDescription: String,
+    val primaryColor: Color,
+    val secondaryColor: Color,
+    val ambientAura: Color,
+    val glowIntensity: Float = 0.85f,
+    val isDarkRecommended: Boolean = true,
+    val tag: String = "VAULT EXCLUSIVE",
+    val holographicBorder: List<Color>
+)
+
+object CyberSkinVaultCatalog {
+    val allSkins: List<CyberSkin> = listOf(
+        CyberSkin(
+            id = "obsidian_cyber",
+            name = "Obsidian Liquid Void",
+            codename = "SKIN // 01-VOID",
+            themeDescription = "Deep obsidian glass with quantum neon cyan photon aura and sub-zero highlights.",
+            primaryColor = Color(0xFF00E5FF),
+            secondaryColor = Color(0xFF00B0FF),
+            ambientAura = Color(0xFF0091EA),
+            glowIntensity = 0.90f,
+            isDarkRecommended = true,
+            tag = "QUANTUM",
+            holographicBorder = listOf(Color(0xFF00E5FF), Color(0xFF7C4DFF), Color(0xFF00E5FF))
+        ),
+        CyberSkin(
+            id = "overdrive_plasma",
+            name = "Overdrive Plasma 4.0",
+            codename = "SKIN // 02-OVERDRIVE",
+            themeDescription = "High-energy thermonuclear orange-crimson glow with molten amber core currents.",
+            primaryColor = Color(0xFFFF3D00),
+            secondaryColor = Color(0xFFFF9100),
+            ambientAura = Color(0xFFFF1744),
+            glowIntensity = 1.0f,
+            isDarkRecommended = true,
+            tag = "OVERDRIVE",
+            holographicBorder = listOf(Color(0xFFFF3D00), Color(0xFFFF9100), Color(0xFFFF1744))
+        ),
+        CyberSkin(
+            id = "cryo_glacier",
+            name = "Cryo Glacier Frost",
+            codename = "SKIN // 03-CRYO",
+            themeDescription = "Sub-zero crystalline ice glass with arctic chill luminescence and glacial refraction.",
+            primaryColor = Color(0xFF00B0FF),
+            secondaryColor = Color(0xFF80D8FF),
+            ambientAura = Color(0xFF40C4FF),
+            glowIntensity = 0.85f,
+            isDarkRecommended = false,
+            tag = "SUB-ZERO",
+            holographicBorder = listOf(Color(0xFF80D8FF), Color(0xFF00B0FF), Color(0xFFFFFFFF))
+        ),
+        CyberSkin(
+            id = "bio_emerald",
+            name = "Bioluminescent Matrix",
+            codename = "SKIN // 04-BIO",
+            themeDescription = "Toxic radioactive neon emerald radiance with bio-electrochemical pulse waves.",
+            primaryColor = Color(0xFF00E676),
+            secondaryColor = Color(0xFF69F0AE),
+            ambientAura = Color(0xFF00C853),
+            glowIntensity = 0.90f,
+            isDarkRecommended = true,
+            tag = "BIO-RAD",
+            holographicBorder = listOf(Color(0xFF00E676), Color(0xFF76FF03), Color(0xFF00C853))
+        ),
+        CyberSkin(
+            id = "solar_auric",
+            name = "Solar Flare 24K Auric",
+            codename = "SKIN // 05-SOLAR",
+            themeDescription = "Ultra-bright coronal solar gold and molten amber rays for prestige power tracking.",
+            primaryColor = Color(0xFFFFD700),
+            secondaryColor = Color(0xFFFFA000),
+            ambientAura = Color(0xFFFF8F00),
+            glowIntensity = 0.92f,
+            isDarkRecommended = true,
+            tag = "LEGENDARY",
+            holographicBorder = listOf(Color(0xFFFFD700), Color(0xFFFFAB00), Color(0xFFFFE082))
+        ),
+        CyberSkin(
+            id = "vapor_sunset",
+            name = "Vaporwave Neon Sunset",
+            codename = "SKIN // 06-VAPOR",
+            themeDescription = "Retro-futuristic electric magenta and cosmic violet neon twilight waves.",
+            primaryColor = Color(0xFFE040FB),
+            secondaryColor = Color(0xFF7C4DFF),
+            ambientAura = Color(0xFF651FFF),
+            glowIntensity = 0.88f,
+            isDarkRecommended = true,
+            tag = "RETRO-CYBER",
+            holographicBorder = listOf(Color(0xFFE040FB), Color(0xFF7C4DFF), Color(0xFF00E5FF))
+        )
+    )
+
+    fun getSkinById(id: String): CyberSkin {
+        return allSkins.find { it.id == id } ?: allSkins.first()
+    }
+}
+

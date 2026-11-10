@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.LightMode
@@ -78,6 +79,7 @@ fun LuxuryTopBar(
     onMenuToggle: () -> Unit,
     themeConfig: GlassThemeConfig,
     onToggleDarkMode: () -> Unit,
+    onOpenSkinVault: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = themeConfig.isDarkMode
@@ -134,8 +136,33 @@ fun LuxuryTopBar(
             )
         }
 
-        // Actions: Quick Dark/Light Toggle + Luxury 3-Line Button
+        // Actions: Cyber Skin Vault + Quick Dark/Light Toggle + Luxury 3-Line Button
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Cyber Skin Vault Quick Access Button (متجر الأقنعة السيبرانية)
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentColor.copy(alpha = if (isDark) 0.18f else 0.12f))
+                    .border(
+                        1.dp,
+                        accentColor.copy(alpha = 0.5f),
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onOpenSkinVault() }
+                    .testTag("cyber_vault_quick_btn"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoAwesome,
+                    contentDescription = "Cyber Skin Vault",
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
             // Dark Mode Quick Toggle Button
             Box(
                 modifier = Modifier
@@ -158,7 +185,7 @@ fun LuxuryTopBar(
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             // Luxury 3-Line Animated Hamburger Button
             LuxuryHamburgerButton(
@@ -270,7 +297,8 @@ fun LuxurySettingsDrawer(
     isOpen: Boolean,
     onClose: () -> Unit,
     themeConfig: GlassThemeConfig,
-    onConfigChange: (GlassThemeConfig) -> Unit
+    onConfigChange: (GlassThemeConfig) -> Unit,
+    onOpenSkinVault: () -> Unit = {}
 ) {
     if (isOpen) {
         BackHandler { onClose() }
@@ -360,7 +388,64 @@ fun LuxurySettingsDrawer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Cyber Skin Vault Promo Banner (متجر الأقنعة والثيمات السيبرانية)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(accentColor.copy(alpha = if (isDark) 0.18f else 0.10f))
+                            .border(1.2.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .clickable {
+                                onClose()
+                                onOpenSkinVault()
+                            }
+                            .padding(14.dp)
+                            .testTag("drawer_cyber_vault_banner")
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(accentColor.copy(alpha = 0.25f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = accentColor,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        text = "CYBER SKIN VAULT",
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = textColor
+                                    )
+                                    Text(
+                                        text = "متجر الأقنعة والثيمات السيبرانية",
+                                        fontFamily = PlusJakartaSansFontFamily,
+                                        fontSize = 11.sp,
+                                        color = accentColor,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
 
                     // Dark Mode Toggle Row
                     DrawerToggleRow(
