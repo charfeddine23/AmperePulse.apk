@@ -183,33 +183,8 @@ fun LuxuryTopBar(
             )
         }
 
-        // Actions: Cyber Skin Vault + Quick Dark/Light Toggle + Luxury 3-Line Button
+        // Actions: Quick Dark/Light Toggle + Luxury 3-Line Button
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Cyber Skin Vault Quick Access Button (متجر الأقنعة السيبرانية)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(accentColor.copy(alpha = if (isDark) 0.18f else 0.12f))
-                    .border(
-                        1.dp,
-                        accentColor.copy(alpha = 0.5f),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .clickable { onOpenSkinVault() }
-                    .testTag("cyber_vault_quick_btn"),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AutoAwesome,
-                    contentDescription = "Cyber Skin Vault",
-                    tint = accentColor,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
             // Dark Mode Quick Toggle Button
             Box(
                 modifier = Modifier

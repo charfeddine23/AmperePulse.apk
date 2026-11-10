@@ -47,7 +47,9 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     private val _selectedTab = MutableStateFlow(NavigationTab.BATTERY)
     val selectedTab: StateFlow<NavigationTab> = _selectedTab.asStateFlow()
 
-    private val _themeConfig = MutableStateFlow(GlassThemeConfig())
+    private val prefsManager = com.example.data.local.SettingsPreferencesManager(application.applicationContext)
+
+    private val _themeConfig = MutableStateFlow(prefsManager.loadThemeConfig())
     val themeConfig: StateFlow<GlassThemeConfig> = _themeConfig.asStateFlow()
 
     private val _isSettingsMenuOpen = MutableStateFlow(false)
@@ -62,6 +64,7 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun updateThemeConfig(config: GlassThemeConfig) {
         _themeConfig.value = config
+        prefsManager.saveThemeConfig(config)
     }
 
     fun toggleSettingsMenu(open: Boolean) {
@@ -74,12 +77,16 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun equipCyberSkin(skin: com.example.data.CyberSkin) {
         val argb = (skin.primaryColor.value shr 32).toLong()
-        _themeConfig.value = _themeConfig.value.copy(
+        // Retain the current user's dark/light mode preference unchanged
+        val updatedConfig = _themeConfig.value.copy(
             activeSkinId = skin.id,
             customAccentHex = argb,
-            glowIntensity = skin.glowIntensity,
-            isDarkMode = if (skin.isDarkRecommended) true else _themeConfig.value.isDarkMode
+            glowIntensity = skin.glowIntensity
+            // isDarkMode remains completely unchanged as requested
         )
+        _themeConfig.value = updatedConfig
+        prefsManager.saveThemeConfig(updatedConfig)
+
         repository.addManualSessionLog(
             title = "Cyber Skin Equipped: ${skin.name}",
             desc = "Liquid Glass holographic aesthetic applied. Aura: ${skin.tag} (${skin.codename}).",

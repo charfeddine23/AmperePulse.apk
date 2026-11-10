@@ -157,8 +157,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     themeConfig = themeConfig,
                     onToggleDarkMode = {
                         viewModel.updateThemeConfig(themeConfig.copy(isDarkMode = !themeConfig.isDarkMode))
-                    },
-                    onOpenSkinVault = { viewModel.toggleSkinVault(true) }
+                    }
                 )
 
                 // 5-Page Content with High-Performance Spring Transitions
