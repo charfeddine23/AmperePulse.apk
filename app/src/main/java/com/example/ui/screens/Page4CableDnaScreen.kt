@@ -7,6 +7,7 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -109,6 +110,27 @@ fun Page4CableDnaScreen(
     val activeResult = cableResult
     val tier = activeResult.tier
     val tierColor = tier.badgeColor
+
+    // 500ms Smooth Indicator Animation to Real-Time Measurement
+    val targetResistance = activeResult.resistanceMilliOhms.toFloat()
+    val animatedResistance by animateFloatAsState(
+        targetValue = targetResistance,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = FastOutSlowInEasing
+        ),
+        label = "resistance500msGauge"
+    )
+
+    val targetVoltageDrop = activeResult.voltageDropMv.toFloat()
+    val animatedVoltageDrop by animateFloatAsState(
+        targetValue = targetVoltageDrop,
+        animationSpec = tween(
+            durationMillis = 500,
+            easing = FastOutSlowInEasing
+        ),
+        label = "voltageDrop500ms"
+    )
 
     val infiniteTransition = rememberInfiniteTransition(label = "cableDnaGlow")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -248,8 +270,8 @@ fun Page4CableDnaScreen(
                                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                             )
 
-                            // Active Measured Resistance Arc
-                            val resistanceFraction = (activeResult.resistanceMilliOhms / 600f).coerceIn(0f, 1f)
+                            // Active Measured Resistance Arc - Smoothly rising over 500ms
+                            val resistanceFraction = (animatedResistance / 600f).coerceIn(0f, 1f)
                             val activeSweep = 240f * resistanceFraction
 
                             drawArc(
@@ -271,6 +293,32 @@ fun Page4CableDnaScreen(
                                 )
                             )
 
+                            // Glowing Real-Time Needle / Pointer Orb at the leading tip of the gauge
+                            if (animatedResistance > 1.5f) {
+                                val currentAngle = 150f + activeSweep
+                                val angleRad = Math.toRadians(currentAngle.toDouble())
+                                val needleX = center.x + radius * Math.cos(angleRad).toFloat()
+                                val needleY = center.y + radius * Math.sin(angleRad).toFloat()
+
+                                // Outer neon aura
+                                drawCircle(
+                                    color = tierColor.copy(alpha = 0.50f * pulseAlpha),
+                                    radius = strokeWidth * 0.95f,
+                                    center = Offset(needleX, needleY)
+                                )
+                                // Solid needle core
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = strokeWidth * 0.55f,
+                                    center = Offset(needleX, needleY)
+                                )
+                                drawCircle(
+                                    color = tierColor,
+                                    radius = strokeWidth * 0.35f,
+                                    center = Offset(needleX, needleY)
+                                )
+                            }
+
                             // Dynamic Scan Needle Glow
                             if (isScanning) {
                                 drawArc(
@@ -283,11 +331,11 @@ fun Page4CableDnaScreen(
                             }
                         }
 
-                        // Central Resistance Readout
+                        // Central Resistance Readout - Smooth Synchronous 500ms counter
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Row(verticalAlignment = Alignment.Bottom) {
                                 Text(
-                                    text = "${activeResult.resistanceMilliOhms}",
+                                    text = "${animatedResistance.toInt()}",
                                     fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 42.sp,
@@ -304,7 +352,7 @@ fun Page4CableDnaScreen(
                                 )
                             }
                             Text(
-                                text = "ΔV Sag: -${activeResult.voltageDropMv} mV",
+                                text = "ΔV Sag: -${animatedVoltageDrop.toInt()} mV",
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 12.sp,
@@ -406,9 +454,9 @@ fun Page4CableDnaScreen(
                 CableMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "VOLTAGE SAG",
-                    value = if (activeResult.voltageDropMv > 0) "-${activeResult.voltageDropMv} mV" else "0 mV",
+                    value = if (animatedVoltageDrop.toInt() > 0) "-${animatedVoltageDrop.toInt()} mV" else "0 mV",
                     subtext = if (telemetry.plugType == com.example.data.ChargePlug.NONE) "No load connected" else "Drop from 5.0V line",
-                    accentColor = if (activeResult.voltageDropMv > 500) TactileCoralRed else TactileRoyalBlue,
+                    accentColor = if (animatedVoltageDrop > 500f) TactileCoralRed else TactileRoyalBlue,
                     isDark = isDark
                 )
 

@@ -3,6 +3,7 @@ package com.example.ui.components
 import android.content.Context
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -226,22 +227,25 @@ fun FloatingGlassNavBar(
                                     isDragging = true
 
                                     var lastX = down.position.x
+                                    var lastTime = down.uptimeMillis
                                     val startX = down.position.x
-                                    var totalDisplacementX = 0f
 
-                                    // Immediately snap/glide towards touch position
+                                    // When pressed down:
+                                    // The droplet forms as a pure round liquid lens WITHOUT A TAIL!
+                                    launch {
+                                        tailStretch.snapTo(0f)
+                                    }
+
                                     val initialIndex = (startX / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
                                     activeHoveredIndex = initialIndex
 
+                                    // Follow finger position directly
+                                    val initialClampedX = startX.coerceIn(tabWidthPx * 0.35f, barWidthPx - tabWidthPx * 0.35f)
                                     launch {
-                                        dropletX.animateTo(
-                                            targetValue = startX.coerceIn(tabWidthPx * 0.45f, barWidthPx - tabWidthPx * 0.45f),
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                stiffness = Spring.StiffnessMedium
-                                            )
-                                        )
+                                        dropletX.snapTo(initialClampedX)
                                     }
+
+                                    var smoothedVelocity = 0f
 
                                     // Continuous dragging loop without lifting finger
                                     while (true) {
@@ -252,38 +256,61 @@ fun FloatingGlassNavBar(
                                             break
                                         }
 
-                                        val currentPos = change.position
-                                        val deltaX = currentPos.x - lastX
-                                        lastX = currentPos.x
-                                        totalDisplacementX += abs(deltaX)
+                                        val currentTime = change.uptimeMillis
+                                        val currentX = change.position.x
+                                        val dt = (currentTime - lastTime).coerceAtLeast(1L)
+                                        val dx = currentX - lastX
 
-                                        if (abs(deltaX) > 0.2f) {
-                                            // Swipe Right to Left (deltaX < 0): tail points Right (+1f)
-                                            // Swipe Left to Right (deltaX > 0): tail points Left (-1f)
-                                            val dir = if (deltaX < 0) 1f else -1f
-                                            val stretch = (abs(deltaX) * 4.2f + baseStretchPx).coerceIn(0f, maxStretchPx)
+                                        lastX = currentX
+                                        lastTime = currentTime
 
+                                        // Calculate instantaneous and smoothed velocity (px/sec)
+                                        val instantVelocity = (dx / dt.toFloat()) * 1000f
+                                        smoothedVelocity = (smoothedVelocity * 0.45f) + (instantVelocity * 0.55f)
+                                        val speed = abs(smoothedVelocity)
+
+                                        // 1:1 true finger tracking - head follows finger position directly
+                                        val clampedX = currentX.coerceIn(tabWidthPx * 0.35f, barWidthPx - tabWidthPx * 0.35f)
+                                        launch {
+                                            dropletX.snapTo(clampedX)
+                                        }
+
+                                        // Dynamic Tail Physics based on finger velocity:
+                                        // When stationary or moving very slowly (< 40 px/s): stretch = 0 (NO TAIL!)
+                                        // As finger moves faster: tail elongates up to maxStretchPx!
+                                        // As finger slows down: tail shortens and retracts!
+                                        val targetStretch = if (speed < 40f) {
+                                            0f
+                                        } else {
+                                            ((speed - 40f) / 1600f * maxStretchPx).coerceIn(0f, maxStretchPx)
+                                        }
+
+                                        // Direction of tail:
+                                        // Moving Left (smoothedVelocity < 0) -> tail points Right (+1f)
+                                        // Moving Right (smoothedVelocity > 0) -> tail points Left (-1f)
+                                        if (abs(smoothedVelocity) > 25f) {
+                                            val dir = if (smoothedVelocity < 0f) 1f else -1f
                                             launch {
-                                                tailDirection.animateTo(dir, animationSpec = tween(50))
+                                                tailDirection.snapTo(dir)
                                             }
-                                            launch {
-                                                tailStretch.animateTo(stretch, animationSpec = tween(35))
-                                            }
+                                        }
 
-                                            val newX = (dropletX.value + deltaX)
-                                                .coerceIn(tabWidthPx * 0.45f, barWidthPx - tabWidthPx * 0.45f)
+                                        launch {
+                                            tailStretch.animateTo(
+                                                targetValue = targetStretch,
+                                                animationSpec = tween(
+                                                    durationMillis = if (targetStretch < tailStretch.value) 75 else 35,
+                                                    easing = LinearEasing
+                                                )
+                                            )
+                                        }
 
-                                            launch {
-                                                dropletX.snapTo(newX)
-                                            }
-
-                                            // Check tab transition
-                                            val hoveredIndex = (newX / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
-                                            if (hoveredIndex != activeHoveredIndex) {
-                                                activeHoveredIndex = hoveredIndex
-                                                CyberHapticsEngine.triggerTactileTick(context)
-                                                onTabSelected(NavigationTab.entries[hoveredIndex])
-                                            }
+                                        // Tab boundary transition
+                                        val hoveredIndex = (clampedX / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
+                                        if (hoveredIndex != activeHoveredIndex) {
+                                            activeHoveredIndex = hoveredIndex
+                                            CyberHapticsEngine.triggerTactileTick(context)
+                                            onTabSelected(NavigationTab.entries[hoveredIndex])
                                         }
 
                                         change.consume()
@@ -298,7 +325,7 @@ fun FloatingGlassNavBar(
                                     CyberHapticsEngine.triggerTactileTick(context)
                                     onTabSelected(finalTab)
 
-                                    // Collapse tail and spring into tab center
+                                    // Collapse tail to 0 and spring into tab center
                                     launch {
                                         tailStretch.animateTo(
                                             targetValue = 0f,
@@ -329,6 +356,7 @@ fun FloatingGlassNavBar(
                         centerY = size.height / 2f,
                         stretch = tailStretch.value,
                         tailDir = tailDirection.value,
+                        isDragging = isDragging,
                         isDarkMode = isDarkMode,
                         accentColor = accentColor,
                         baseWidth = tabWidthPx * 0.88f,
@@ -411,6 +439,7 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
     centerY: Float,
     stretch: Float,
     tailDir: Float,
+    isDragging: Boolean,
     isDarkMode: Boolean,
     accentColor: Color,
     baseWidth: Float,
@@ -437,38 +466,49 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
         center = Offset(currentX, centerY)
     )
 
-    // Construct droplet geometry: resting capsule vs. stretched dynamic teardrop
+    // Construct droplet geometry: resting capsule vs. stretched dynamic teardrop vs. round pressed drop
     val activePath: Path
     val leadingX: Float
     val tailTipX: Float
     val tailSign = if (tailDir >= 0f) 1f else -1f
 
     if (stretch <= 2.dp.toPx()) {
-        // Resting Liquid Glass Pill
-        val left = currentX - baseWidth * 0.44f
-        val top = centerY - baseHeight * 0.44f
-        val w = baseWidth * 0.88f
-        val h = baseHeight * 0.88f
+        if (isDragging) {
+            // When pressed or stationary while holding finger: Pure circular liquid glass droplet WITHOUT TAIL!
+            val diam = headRadius * 2f
+            val left = currentX - headRadius
+            val top = centerY - headRadius
+            leadingX = left
+            tailTipX = left + diam
 
-        leadingX = left
-        tailTipX = left + w
+            activePath = Path().apply {
+                addOval(Rect(left, top, left + diam, top + diam))
+            }
+        } else {
+            // Resting Liquid Glass Pill when settled on active tab
+            val left = currentX - baseWidth * 0.44f
+            val top = centerY - baseHeight * 0.44f
+            val w = baseWidth * 0.88f
+            val h = baseHeight * 0.88f
 
-        activePath = Path().apply {
-            addRoundRect(
-                RoundRect(
-                    rect = Rect(left, top, left + w, top + h),
-                    cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+            leadingX = left
+            tailTipX = left + w
+
+            activePath = Path().apply {
+                addRoundRect(
+                    RoundRect(
+                        rect = Rect(left, top, left + w, top + h),
+                        cornerRadius = CornerRadius(cornerRadius, cornerRadius)
+                    )
                 )
-            )
+            }
         }
     } else {
-        // Dynamic Liquid Teardrop:
-        // tailSign = +1: tail points Right, head on Left (finger swiping Right to Left)
-        // tailSign = -1: tail points Left, head on Right (finger swiping Left to Right)
+        // Dynamic Liquid Teardrop: tail forms, elongates, and shortens strictly with velocity!
         val tailLength = stretch * 1.35f
         leadingX = currentX - (tailSign * headRadius)
         tailTipX = currentX + (tailSign * (headRadius + tailLength))
-        val tailRadius = (headRadius * 0.30f).coerceAtLeast(3.5.dp.toPx())
+        val tailRadius = (headRadius * 0.28f).coerceAtLeast(3.5.dp.toPx())
 
         activePath = Path().apply {
             moveTo(leadingX, centerY)
@@ -556,7 +596,33 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
 
     drawPath(path = activePath, brush = glassFill)
 
-    // 3. Leading Edge Specular Highlight (Liquid Glass Front Lens)
+    // 3. Specular Highlight for Pure Round Droplet (when pressed with zero tail)
+    if (isDragging && stretch <= 2.dp.toPx()) {
+        val roundLensHighlight = Path().apply {
+            moveTo(currentX - headRadius * 0.55f, centerY - headRadius * 0.25f)
+            cubicTo(
+                x1 = currentX - headRadius * 0.45f,
+                y1 = centerY - headRadius * 0.70f,
+                x2 = currentX + headRadius * 0.20f,
+                y2 = centerY - headRadius * 0.75f,
+                x3 = currentX + headRadius * 0.50f,
+                y3 = centerY - headRadius * 0.35f
+            )
+        }
+        drawPath(
+            path = roundLensHighlight,
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
+                    Color.Transparent
+                )
+            ),
+            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+        )
+    }
+
+    // 3b. Leading Edge Specular Highlight (Liquid Glass Front Lens when moving)
     if (stretch > 2.dp.toPx()) {
         val leadingSpecular = Path().apply {
             moveTo(currentX - tailSign * headRadius * 0.5f, centerY - headRadius * 0.7f)
