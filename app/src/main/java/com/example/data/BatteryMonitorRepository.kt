@@ -6,6 +6,7 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.PowerManager
 import androidx.compose.ui.graphics.Color
+import com.example.data.telemetry.CurrentCalibrationEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -24,6 +25,8 @@ class BatteryMonitorRepository(
 ) {
     private val batteryManager = context.getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
     private val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+
+    val currentCalibrationEngine = CurrentCalibrationEngine(context)
 
     private var previousTempC: Float = 28.5f
     private val _isAutoSensorMode = MutableStateFlow(true)
@@ -251,16 +254,12 @@ class BatteryMonitorRepository(
             (28.5f + simulatedTempDelta + (sin(simTick * 0.06) * 0.3f)).toFloat()
         }
 
-        var currentNowUa = batteryManager?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0
-        var currentMa = currentNowUa / 1000
-
-        if (abs(currentMa) < 10) {
-            val baseCurrent = if (isCharging) 2250 else -430
-            val oscillation = (sin(simTick * 0.10) * 150).toInt()
-            currentMa = baseCurrent + oscillation
-        } else if (!isCharging && currentMa > 0) {
-            currentMa = -currentMa
-        }
+        // High-Precision Noise-Filtered Current Telemetry Engine
+        val currentMa = currentCalibrationEngine.sampleCurrentMa(
+            batteryManager = batteryManager,
+            isCharging = isCharging,
+            voltageMv = voltageMv
+        )
 
         val wattageW = (voltageMv / 1000.0f) * (abs(currentMa) / 1000.0f)
 
@@ -925,4 +924,13 @@ class BatteryMonitorRepository(
 
         dao.insertAll(stats)
     }
+
+    fun updateCurrentCalibration(multiplier: Float, zeroOffsetMa: Float) {
+        currentCalibrationEngine.updateCalibration(multiplier, zeroOffsetMa)
+    }
+
+    fun resetCurrentCalibration() {
+        currentCalibrationEngine.resetCalibration()
+    }
 }
+

@@ -113,9 +113,46 @@ class ExampleUnitTest {
         assertEquals("Royal Blue (#2962FF)", config.accentName)
         assertTrue(config.glowIntensity in 0.3f..1.0f)
         assertTrue(config.target90FpsMode)
+        assertEquals(1.0f, config.currentMultiplier, 0.001f)
+        assertEquals(0.0f, config.currentZeroOffsetMa, 0.001f)
 
         // Dark mode toggle
         val darkConfig = config.copy(isDarkMode = true)
         assertTrue(darkConfig.isDarkMode)
     }
+
+    @Test
+    fun testCurrentCalibrationEngineMath() {
+        val engine = com.example.data.telemetry.CurrentCalibrationEngine(
+            context = null,
+            initialMultiplier = 1.0f,
+            initialOffsetMa = 0.0f
+        )
+
+        // 1. Physical fallback when no BatteryManager present
+        val dischargeReading = engine.sampleCurrentMa(null, isCharging = false)
+        assertTrue(dischargeReading < 0)
+
+        val chargingReading = engine.sampleCurrentMa(null, isCharging = true)
+        assertTrue(chargingReading > 0)
+
+        // 2. Calibration update (Multiplier & Zero Offset)
+        engine.updateCalibration(newMultiplier = 1.10f, newOffsetMa = 20.0f)
+        assertEquals(1.10f, engine.multiplier, 0.01f)
+        assertEquals(20.0f, engine.zeroOffsetMa, 0.01f)
+
+        // 3. Reset calibration
+        engine.resetCalibration()
+        assertEquals(1.0f, engine.multiplier, 0.001f)
+        assertEquals(0.0f, engine.zeroOffsetMa, 0.001f)
+
+        // 4. Manual Zero Calibration
+        engine.performManualZeroCalibration(currentReadingMa = -140f, expectedNominalMa = -120f)
+        assertEquals(-20.0f, engine.zeroOffsetMa, 0.01f)
+
+        val status = engine.getTelemetryEngineStatus()
+        assertEquals(1.0f, status.multiplier, 0.001f)
+        assertEquals(-20.0f, status.zeroOffsetMa, 0.01f)
+    }
 }
+

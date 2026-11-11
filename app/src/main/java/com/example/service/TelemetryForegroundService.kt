@@ -83,15 +83,20 @@ class TelemetryForegroundService : Service() {
             val tempC = rawTemp / 10.0f
 
             val bm = getSystemService(Context.BATTERY_SERVICE) as? BatteryManager
-            var currentMa = (bm?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) ?: 0) / 1000
             val statusInt = bStatus?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
             val isCharging = statusInt == BatteryManager.BATTERY_STATUS_CHARGING || statusInt == BatteryManager.BATTERY_STATUS_FULL
 
-            if (abs(currentMa) < 10) {
-                currentMa = if (isCharging) 2150 else -380
-            } else if (!isCharging && currentMa > 0) {
-                currentMa = -currentMa
-            }
+            val prefs = com.example.data.local.SettingsPreferencesManager(this).loadThemeConfig()
+            val engine = com.example.data.telemetry.CurrentCalibrationEngine(
+                context = this,
+                initialMultiplier = prefs.currentMultiplier,
+                initialOffsetMa = prefs.currentZeroOffsetMa
+            )
+            val currentMa = engine.sampleCurrentMa(
+                batteryManager = bm,
+                isCharging = isCharging,
+                voltageMv = voltageMv
+            )
 
             val stateString = when {
                 tempC > 38f -> "HEATING"

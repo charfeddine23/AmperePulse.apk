@@ -66,7 +66,9 @@ class SettingsPreferencesManager(context: Context) {
             highTempThresholdC = highTempThreshold,
             hapticFeedbackEnabled = hapticEnabled,
             target90FpsMode = target90Fps,
-            showFpsOverlay = showFpsOverlay
+            showFpsOverlay = showFpsOverlay,
+            currentMultiplier = prefs.getFloat(KEY_CURRENT_MULTIPLIER, 1.0f),
+            currentZeroOffsetMa = prefs.getFloat(KEY_CURRENT_ZERO_OFFSET, 0.0f)
         )
     }
 
@@ -93,6 +95,8 @@ class SettingsPreferencesManager(context: Context) {
             putBoolean(KEY_HAPTIC_ENABLED, config.hapticFeedbackEnabled)
             putBoolean(KEY_TARGET_90FPS, config.target90FpsMode)
             putBoolean(KEY_SHOW_FPS, config.showFpsOverlay)
+            putFloat(KEY_CURRENT_MULTIPLIER, config.currentMultiplier)
+            putFloat(KEY_CURRENT_ZERO_OFFSET, config.currentZeroOffsetMa)
             apply()
         }
     }
@@ -116,5 +120,7 @@ class SettingsPreferencesManager(context: Context) {
         private const val KEY_HAPTIC_ENABLED = "haptic_enabled"
         private const val KEY_TARGET_90FPS = "target_90fps"
         private const val KEY_SHOW_FPS = "show_fps"
+        private const val KEY_CURRENT_MULTIPLIER = "current_multiplier"
+        private const val KEY_CURRENT_ZERO_OFFSET = "current_zero_offset"
     }
 }

@@ -466,200 +466,179 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
         center = Offset(currentX, centerY)
     )
 
-    // Construct droplet geometry: resting capsule vs. stretched dynamic teardrop vs. round pressed drop
-    val activePath: Path
-    val leadingX: Float
-    val tailTipX: Float
+    // Continuous organic fluid morphing:
+    // Let R be the base radius of the droplet.
+    // When stationary (stretch == 0), the contour is mathematically identical to a circle (or rounded resting pill).
+    // As stretch increases with finger speed, the trailing tail continuously pulls out while preserving fluid volume (waist thinning).
+    val R = headRadius
     val tailSign = if (tailDir >= 0f) 1f else -1f
 
-    if (stretch <= 2.dp.toPx()) {
-        if (isDragging) {
-            // When pressed or stationary while holding finger: Pure circular liquid glass droplet WITHOUT TAIL!
-            val diam = headRadius * 2f
-            val left = currentX - headRadius
-            val top = centerY - headRadius
-            leadingX = left
-            tailTipX = left + diam
+    // Organic stretch ratio [0..1]
+    val stretchRatio = (stretch / with(this) { 44.dp.toPx() }).coerceIn(0f, 1f)
+    val tailLength = stretch * 1.45f
 
-            activePath = Path().apply {
-                addOval(Rect(left, top, left + diam, top + diam))
-            }
-        } else {
-            // Resting Liquid Glass Pill when settled on active tab
-            val left = currentX - baseWidth * 0.44f
-            val top = centerY - baseHeight * 0.44f
-            val w = baseWidth * 0.88f
-            val h = baseHeight * 0.88f
+    // Fluid volume preservation: minor waist thinning perpendicular to motion
+    val thinning = R * (0.14f * stretchRatio)
+    val Ry = (R - thinning).coerceAtLeast(R * 0.75f)
 
-            leadingX = left
-            tailTipX = left + w
+    // Tail tip thickness continuously tapers from R down to a fluid meniscus tip as stretch increases
+    // At stretch == 0: tailTipRadius == R (exact circular symmetry!)
+    // As stretch -> max: tailTipRadius shrinks smoothly to a rounded liquid droplet tip
+    val minTipRadius = with(this) { 4.5.dp.toPx() }
+    val tailTipRadius = R - (R - minTipRadius) * stretchRatio
 
-            activePath = Path().apply {
-                addRoundRect(
-                    RoundRect(
-                        rect = Rect(left, top, left + w, top + h),
-                        cornerRadius = CornerRadius(cornerRadius, cornerRadius)
-                    )
-                )
-            }
-        }
-    } else {
-        // Dynamic Liquid Teardrop: tail forms, elongates, and shortens strictly with velocity!
-        val tailLength = stretch * 1.35f
-        leadingX = currentX - (tailSign * headRadius)
-        tailTipX = currentX + (tailSign * (headRadius + tailLength))
-        val tailRadius = (headRadius * 0.28f).coerceAtLeast(3.5.dp.toPx())
+    // Resting pill spread when not dragging and stationary
+    val pillSpread = if (!isDragging && stretch <= 1f) (baseWidth * 0.44f - R).coerceAtLeast(0f) else 0f
 
-        activePath = Path().apply {
-            moveTo(leadingX, centerY)
+    // Leading dome edge (moves forward slightly with speed)
+    val leadExt = R + pillSpread + (thinning * 0.25f)
+    val leadingX = currentX - (tailSign * leadExt)
 
-            // Curve from leading edge to top of head
-            cubicTo(
-                x1 = leadingX,
-                y1 = centerY - headRadius * 0.55f,
-                x2 = currentX - tailSign * headRadius * 0.55f,
-                y2 = centerY - headRadius,
-                x3 = currentX,
-                y3 = centerY - headRadius
-            )
+    // Trailing tip edge
+    val tailExt = R + pillSpread + tailLength
+    val tailTipX = currentX + (tailSign * tailExt)
 
-            // Curve from top of head to top of tail tip
-            cubicTo(
-                x1 = currentX + tailSign * tailLength * 0.30f,
-                y1 = centerY - headRadius * 0.95f,
-                x2 = currentX + tailSign * tailLength * 0.70f,
-                y2 = centerY - tailRadius * 1.25f,
-                x3 = tailTipX,
-                y3 = centerY - tailRadius
-            )
+    // Standard cubic Bézier circular arc approximation constant: k = 4 * (sqrt(2) - 1) / 3 ≈ 0.55228475f
+    val kCircle = 0.55228475f
 
-            // Round the tail tip
-            cubicTo(
-                x1 = tailTipX + tailSign * tailRadius * 0.55f,
-                y1 = centerY - tailRadius,
-                x2 = tailTipX + tailSign * tailRadius * 0.55f,
-                y2 = centerY + tailRadius,
-                x3 = tailTipX,
-                y3 = centerY + tailRadius
-            )
+    val activePath = Path().apply {
+        // Start at leading apex
+        moveTo(leadingX, centerY)
 
-            // Curve from bottom of tail tip back to bottom of head
-            cubicTo(
-                x1 = currentX + tailSign * tailLength * 0.70f,
-                y1 = centerY + tailRadius * 1.25f,
-                x2 = currentX + tailSign * tailLength * 0.30f,
-                y2 = centerY + headRadius * 0.95f,
-                x3 = currentX,
-                y3 = centerY + headRadius
-            )
+        // Segment 1: Leading edge -> Top crest
+        cubicTo(
+            x1 = leadingX,
+            y1 = centerY - Ry * kCircle,
+            x2 = currentX - tailSign * (R * kCircle + pillSpread * 0.5f),
+            y2 = centerY - Ry,
+            x3 = currentX - tailSign * (pillSpread * 0.2f),
+            y3 = centerY - Ry
+        )
 
-            // Curve from bottom of head back to leading edge
-            cubicTo(
-                x1 = currentX - tailSign * headRadius * 0.55f,
-                y1 = centerY + headRadius,
-                x2 = leadingX,
-                y2 = centerY + headRadius * 0.55f,
-                x3 = leadingX,
-                y3 = centerY
-            )
-            close()
-        }
+        // Segment 2: Top crest -> Tail tip top
+        // As stretch grows, control points smoothly transition from circular quadrant to fluid meniscus
+        val cp1X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
+        val cp1Y = centerY - Ry
+        val cp2X = tailTipX - tailSign * (tailTipRadius * 1.1f)
+        val cp2Y = centerY - tailTipRadius
+        val tipTopX = tailTipX
+        val tipTopY = centerY - tailTipRadius
+
+        cubicTo(
+            x1 = cp1X,
+            y1 = cp1Y,
+            x2 = cp2X,
+            y2 = cp2Y,
+            x3 = tipTopX,
+            y3 = tipTopY
+        )
+
+        // Segment 3: Round the tail tip continuously
+        cubicTo(
+            x1 = tailTipX + tailSign * tailTipRadius * kCircle,
+            y1 = centerY - tailTipRadius,
+            x2 = tailTipX + tailSign * tailTipRadius * kCircle,
+            y2 = centerY + tailTipRadius,
+            x3 = tailTipX,
+            y3 = centerY + tailTipRadius
+        )
+
+        // Segment 4: Tail tip bottom -> Bottom crest
+        val cp3X = tailTipX - tailSign * (tailTipRadius * 1.1f)
+        val cp3Y = centerY + tailTipRadius
+        val cp4X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
+        val cp4Y = centerY + Ry
+        val crestBottomX = currentX - tailSign * (pillSpread * 0.2f)
+        val crestBottomY = centerY + Ry
+
+        cubicTo(
+            x1 = cp3X,
+            y1 = cp3Y,
+            x2 = cp4X,
+            y2 = cp4Y,
+            x3 = crestBottomX,
+            y3 = crestBottomY
+        )
+
+        // Segment 5: Bottom crest -> Leading edge
+        cubicTo(
+            x1 = currentX - tailSign * (R * kCircle + pillSpread * 0.5f),
+            y1 = centerY + Ry,
+            x2 = leadingX,
+            y2 = centerY + Ry * kCircle,
+            x3 = leadingX,
+            y3 = centerY
+        )
+        close()
     }
 
-    // 2. Liquid Glass Body (Translucent refractive sheen)
+    // 2. Apple Liquid Glass Translucent Body (with dynamic internal refraction)
     val startGradientX = if (tailSign >= 0) leadingX else tailTipX
     val endGradientX = if (tailSign >= 0) tailTipX else leadingX
 
     val glassFill = if (isDarkMode) {
         Brush.linearGradient(
             colors = listOf(
-                accentColor.copy(alpha = 0.38f),
+                accentColor.copy(alpha = 0.38f + 0.10f * stretchRatio),
                 Color(0xFF334155).copy(alpha = 0.45f),
                 Color(0xFF1E293B).copy(alpha = 0.65f),
-                accentColor.copy(alpha = 0.22f)
+                accentColor.copy(alpha = 0.22f + 0.08f * stretchRatio)
             ),
-            start = Offset(startGradientX, centerY - headRadius),
-            end = Offset(endGradientX, centerY + headRadius)
+            start = Offset(startGradientX, centerY - Ry),
+            end = Offset(endGradientX, centerY + Ry)
         )
     } else {
         Brush.linearGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.90f),
-                accentColor.copy(alpha = 0.24f),
+                accentColor.copy(alpha = 0.24f + 0.12f * stretchRatio),
                 Color.White.copy(alpha = 0.65f),
-                accentColor.copy(alpha = 0.16f)
+                accentColor.copy(alpha = 0.16f + 0.10f * stretchRatio)
             ),
-            start = Offset(startGradientX, centerY - headRadius),
-            end = Offset(endGradientX, centerY + headRadius)
+            start = Offset(startGradientX, centerY - Ry),
+            end = Offset(endGradientX, centerY + Ry)
         )
     }
 
     drawPath(path = activePath, brush = glassFill)
 
-    // 3. Specular Highlight for Pure Round Droplet (when pressed with zero tail)
-    if (isDragging && stretch <= 2.dp.toPx()) {
-        val roundLensHighlight = Path().apply {
-            moveTo(currentX - headRadius * 0.55f, centerY - headRadius * 0.25f)
-            cubicTo(
-                x1 = currentX - headRadius * 0.45f,
-                y1 = centerY - headRadius * 0.70f,
-                x2 = currentX + headRadius * 0.20f,
-                y2 = centerY - headRadius * 0.75f,
-                x3 = currentX + headRadius * 0.50f,
-                y3 = centerY - headRadius * 0.35f
-            )
-        }
-        drawPath(
-            path = roundLensHighlight,
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
-                    Color.Transparent
-                )
-            ),
-            style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+    // 3. Continuous Leading Edge Dome Specular Lens Highlight
+    // Smoothly blends from pure round lens highlight (stretch=0) into directional front dome lens
+    val leadingSpecular = Path().apply {
+        moveTo(currentX - tailSign * R * 0.45f, centerY - Ry * 0.68f)
+        cubicTo(
+            x1 = leadingX + tailSign * (R * 0.12f),
+            y1 = centerY - Ry * 0.36f,
+            x2 = leadingX + tailSign * (R * 0.12f),
+            y2 = centerY + Ry * 0.36f,
+            x3 = currentX - tailSign * R * 0.45f,
+            y3 = centerY + Ry * 0.68f
         )
     }
-
-    // 3b. Leading Edge Specular Highlight (Liquid Glass Front Lens when moving)
-    if (stretch > 2.dp.toPx()) {
-        val leadingSpecular = Path().apply {
-            moveTo(currentX - tailSign * headRadius * 0.5f, centerY - headRadius * 0.7f)
-            cubicTo(
-                x1 = leadingX,
-                y1 = centerY - headRadius * 0.35f,
-                x2 = leadingX,
-                y2 = centerY + headRadius * 0.35f,
-                x3 = currentX - tailSign * headRadius * 0.5f,
-                y3 = centerY + headRadius * 0.7f
-            )
-        }
-        drawPath(
-            path = leadingSpecular,
-            brush = Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.20f),
-                    Color.White.copy(alpha = 0.88f),
-                    Color.White.copy(alpha = 0.20f)
-                ),
-                startY = centerY - headRadius * 0.7f,
-                endY = centerY + headRadius * 0.7f
+    drawPath(
+        path = leadingSpecular,
+        brush = Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.15f),
+                Color.White.copy(alpha = 0.88f),
+                Color.White.copy(alpha = 0.15f)
             ),
-            style = Stroke(width = 2.4.dp.toPx(), cap = StrokeCap.Round)
-        )
-    }
+            startY = centerY - Ry * 0.68f,
+            endY = centerY + Ry * 0.68f
+        ),
+        style = Stroke(width = with(this) { 2.2.dp.toPx() }, cap = StrokeCap.Round)
+    )
 
-    // 4. Top Crest Specular Shimmer
+    // 4. Top Crest Specular Shimmer (Gleams across the upper curvature)
     val topSpecular = Path().apply {
-        moveTo(currentX - tailSign * headRadius * 0.45f, centerY - headRadius * 0.75f)
+        moveTo(currentX - tailSign * R * 0.5f, centerY - Ry * 0.72f)
         cubicTo(
             x1 = currentX,
-            y1 = centerY - headRadius * 0.92f,
-            x2 = currentX + tailSign * headRadius * 0.35f,
-            y2 = centerY - headRadius * 0.88f,
-            x3 = currentX + tailSign * headRadius * 0.65f,
-            y3 = centerY - headRadius * 0.70f
+            y1 = centerY - Ry * 0.94f,
+            x2 = currentX + tailSign * (R * 0.4f + tailLength * 0.35f),
+            y2 = centerY - (Ry * 0.90f - thinning * 0.4f),
+            x3 = currentX + tailSign * (R * 0.75f + tailLength * 0.60f),
+            y3 = centerY - (tailTipRadius * 1.15f)
         )
     }
     drawPath(
@@ -671,45 +650,46 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
                 Color.Transparent
             )
         ),
-        style = Stroke(width = 1.6.dp.toPx(), cap = StrokeCap.Round)
+        style = Stroke(width = with(this) { 1.6.dp.toPx() }, cap = StrokeCap.Round)
     )
 
-    // 5. Outer Liquid Glass Rim Border
+    // 5. Outer Liquid Glass Rim Border with Pristine Refraction
     drawPath(
         path = activePath,
         brush = Brush.linearGradient(
             colors = if (isDarkMode) {
                 listOf(
-                    Color.White.copy(alpha = 0.65f),
+                    Color.White.copy(alpha = 0.68f),
                     accentColor.copy(alpha = 0.75f),
-                    accentColor.copy(alpha = 0.25f),
-                    Color.White.copy(alpha = 0.40f)
+                    accentColor.copy(alpha = 0.30f),
+                    Color.White.copy(alpha = 0.45f)
                 )
             } else {
                 listOf(
                     Color.White.copy(alpha = 0.95f),
-                    accentColor.copy(alpha = 0.50f),
+                    accentColor.copy(alpha = 0.55f),
                     Color(0xFFCBD5E1),
                     Color.White.copy(alpha = 0.75f)
                 )
             },
-            start = Offset(startGradientX, centerY - headRadius),
-            end = Offset(endGradientX, centerY + headRadius)
+            start = Offset(startGradientX, centerY - Ry),
+            end = Offset(endGradientX, centerY + Ry)
         ),
-        style = Stroke(width = 1.2.dp.toPx(), cap = StrokeCap.Round)
+        style = Stroke(width = with(this) { 1.2.dp.toPx() }, cap = StrokeCap.Round)
     )
 
-    // 6. Dynamic Photon Glint when moving fast
-    if (stretch > 14.dp.toPx()) {
+    // 6. Dynamic Internal Photon Glint (appears progressively with fluid velocity)
+    if (stretchRatio > 0.25f) {
+        val glintAlpha = ((stretchRatio - 0.25f) / 0.75f).coerceIn(0f, 1f)
         drawCircle(
-            color = Color.White.copy(alpha = 0.85f),
-            radius = 2.5.dp.toPx(),
-            center = Offset(currentX - tailSign * headRadius * 0.35f, centerY - headRadius * 0.25f)
+            color = Color.White.copy(alpha = 0.90f * glintAlpha),
+            radius = with(this) { 2.4.dp.toPx() },
+            center = Offset(currentX - tailSign * R * 0.35f, centerY - Ry * 0.25f)
         )
         drawCircle(
-            color = accentColor.copy(alpha = 0.45f),
-            radius = 6.dp.toPx(),
-            center = Offset(currentX - tailSign * headRadius * 0.35f, centerY - headRadius * 0.25f)
+            color = accentColor.copy(alpha = 0.45f * glintAlpha),
+            radius = with(this) { 6.dp.toPx() },
+            center = Offset(currentX - tailSign * R * 0.35f, centerY - Ry * 0.25f)
         )
     }
 }

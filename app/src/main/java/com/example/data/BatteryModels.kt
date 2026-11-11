@@ -205,7 +205,9 @@ data class GlassThemeConfig(
     val highTempThresholdC: Float = 42.0f,
     val hapticFeedbackEnabled: Boolean = true,
     val target90FpsMode: Boolean = true,
-    val showFpsOverlay: Boolean = true
+    val showFpsOverlay: Boolean = true,
+    val currentMultiplier: Float = 1.0f,
+    val currentZeroOffsetMa: Float = 0.0f
 ) {
     val accentColor: Color
         get() = if (customAccentHex != null) {

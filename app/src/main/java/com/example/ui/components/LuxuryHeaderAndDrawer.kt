@@ -721,6 +721,141 @@ fun LuxurySettingsDrawer(
                         textColor = textColor
                     )
 
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // CURRENT SENSOR CALIBRATION & NOISE FILTER ENGINE
+                    Text(
+                        text = "CURRENT SENSOR CALIBRATION (معايرة مقياس التيار)",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.5.sp,
+                        color = textColor
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Adaptive EMA Noise Filter & Zero-Offset drift neutralizer across OEM chipsets",
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.5.sp,
+                        color = TextSlate
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF1F5F9))
+                            .border(1.dp, if (isDark) Color(0x33475569) else Color(0x66CBD5E1), RoundedCornerShape(16.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column {
+                            // Multiplier Slider Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Gain Multiplier",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = String.format(java.util.Locale.US, "%.2fx", themeConfig.currentMultiplier),
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = accentColor
+                                )
+                            }
+                            androidx.compose.material3.Slider(
+                                value = themeConfig.currentMultiplier,
+                                onValueChange = {
+                                    onConfigChange(themeConfig.copy(currentMultiplier = ((it * 100).toInt() / 100f)))
+                                },
+                                valueRange = 0.70f..1.40f,
+                                steps = 14,
+                                colors = androidx.compose.material3.SliderDefaults.colors(
+                                    thumbColor = accentColor,
+                                    activeTrackColor = accentColor,
+                                    inactiveTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            // Zero Offset Slider Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Zero Offset Drift (معايرة الصفر)",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = "${if (themeConfig.currentZeroOffsetMa >= 0) "+" else ""}${themeConfig.currentZeroOffsetMa.toInt()} mA",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = accentColor
+                                )
+                            }
+                            androidx.compose.material3.Slider(
+                                value = themeConfig.currentZeroOffsetMa,
+                                onValueChange = {
+                                    onConfigChange(themeConfig.copy(currentZeroOffsetMa = it.toInt().toFloat()))
+                                },
+                                valueRange = -150f..150f,
+                                steps = 15,
+                                colors = androidx.compose.material3.SliderDefaults.colors(
+                                    thumbColor = accentColor,
+                                    activeTrackColor = accentColor,
+                                    inactiveTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Quick Reset to Factory Baseline
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                        .clickable {
+                                            onConfigChange(
+                                                themeConfig.copy(
+                                                    currentMultiplier = 1.0f,
+                                                    currentZeroOffsetMa = 0.0f
+                                                )
+                                            )
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "RESET TO BASELINE",
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 10.sp,
+                                        color = accentColor
+                                    )
+                                }
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(30.dp))
                 }
             }

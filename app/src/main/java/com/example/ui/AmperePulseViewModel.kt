@@ -65,12 +65,20 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     init {
         // Apply persisted sound preferences on startup
         com.example.audio.CyberSoundscapeEngine.isEnabled = _themeConfig.value.soundEffectsEnabled
+        repository.updateCurrentCalibration(
+            multiplier = _themeConfig.value.currentMultiplier,
+            zeroOffsetMa = _themeConfig.value.currentZeroOffsetMa
+        )
     }
 
     fun updateThemeConfig(config: GlassThemeConfig) {
         _themeConfig.value = config
         prefsManager.saveThemeConfig(config)
         com.example.audio.CyberSoundscapeEngine.isEnabled = config.soundEffectsEnabled
+        repository.updateCurrentCalibration(
+            multiplier = config.currentMultiplier,
+            zeroOffsetMa = config.currentZeroOffsetMa
+        )
         if (config.backgroundServiceEnabled) {
             com.example.service.TelemetryForegroundService.startService(getApplication())
         } else {
