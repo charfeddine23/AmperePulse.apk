@@ -195,7 +195,7 @@ fun Page5MySpaceScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(bottom = 110.dp)
+                .padding(bottom = 24.dp)
                 .graphicsLayer { clip = false }
         ) {
             // USER ACCOUNT & GOOGLE LINK BANNER (Replaces MY SPACE TELEMETRY CONSOLE)

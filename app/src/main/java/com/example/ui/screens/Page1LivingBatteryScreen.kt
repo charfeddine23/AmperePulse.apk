@@ -107,15 +107,8 @@ fun Page1LivingBatteryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .thermalLiquidGlassBackground(
-                temperatureC = telemetry.temperatureC,
-                isDarkMode = isDark,
-                glowIntensity = glow,
-                criticalTempThreshold = 40.0f,
-                normalTempThreshold = 34.0f
-            )
             .verticalScroll(scrollState)
-            .padding(bottom = 110.dp)
+            .padding(bottom = 20.dp)
             .graphicsLayer { clip = false }
     ) {
         // 1. Compact & Sleek Living State Sensor Banner (Reduced container height, no XP text)

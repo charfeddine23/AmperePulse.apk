@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,7 +28,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import com.example.ui.components.AdaptiveLiquidDropletSwipeContainer
 import com.example.ui.components.CyberSkinVaultDialog
 import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.LuxurySettingsDrawer
@@ -165,23 +166,9 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .padding(bottom = 74.dp)
                 ) {
-                    AdaptiveLiquidDropletSwipeContainer(
-                        modifier = Modifier.fillMaxSize(),
-                        accentColor = activeAccent,
-                        isDarkMode = isDark,
-                        onSwipeNext = {
-                            val tabs = NavigationTab.values()
-                            val nextIndex = (selectedTab.ordinal + 1).coerceAtMost(tabs.size - 1)
-                            viewModel.selectTab(tabs[nextIndex])
-                        },
-                        onSwipePrevious = {
-                            val tabs = NavigationTab.values()
-                            val prevIndex = (selectedTab.ordinal - 1).coerceAtLeast(0)
-                            viewModel.selectTab(tabs[prevIndex])
-                        }
-                    ) {
-                        AnimatedContent(
+                    AnimatedContent(
                             targetState = selectedTab,
                             transitionSpec = {
                                 val isMovingForward = targetState.ordinal > initialState.ordinal
@@ -253,7 +240,6 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                         viewModel.addManualLog(title, desc, tag, type)
                                     }
                                 )
-                            }
                         }
                     }
                 }

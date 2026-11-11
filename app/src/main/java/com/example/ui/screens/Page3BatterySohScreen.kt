@@ -120,7 +120,7 @@ fun Page3BatterySohScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .padding(bottom = 110.dp)
+            .padding(bottom = 24.dp)
             .graphicsLayer { clip = false }
     ) {
         // 1. Header Banner Card
