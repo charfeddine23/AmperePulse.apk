@@ -79,7 +79,10 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
             zeroOffsetMa = _themeConfig.value.currentZeroOffsetMa
         )
         if (_themeConfig.value.autoUpdateEnabled) {
-            updateEngine.checkForUpdates(autoShowOnAvailable = true)
+            updateEngine.checkForUpdates(
+                autoShowOnAvailable = true,
+                autoDownloadIfFound = true
+            )
         }
     }
 
@@ -87,11 +90,19 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         updateEngine.attachLauncher(launcher)
     }
 
-    fun checkForAppUpdates(openDialogImmediatelyOnManual: Boolean = false) {
+    fun checkForAppUpdates(
+        openDialogImmediatelyOnManual: Boolean = false,
+        autoDownloadIfFound: Boolean = true
+    ) {
         updateEngine.checkForUpdates(
             autoShowOnAvailable = true,
-            openDialogImmediatelyOnManual = openDialogImmediatelyOnManual
+            openDialogImmediatelyOnManual = openDialogImmediatelyOnManual,
+            autoDownloadIfFound = autoDownloadIfFound
         )
+    }
+
+    fun cancelAppUpdateDownload() {
+        updateEngine.cancelInAppDownload()
     }
 
     fun openUpdatePreviewDialog() {
@@ -112,7 +123,10 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onResumeUpdateCheck() {
         if (_themeConfig.value.autoUpdateEnabled) {
-            updateEngine.checkForUpdates(autoShowOnAvailable = true)
+            updateEngine.checkForUpdates(
+                autoShowOnAvailable = true,
+                autoDownloadIfFound = true
+            )
         }
     }
 

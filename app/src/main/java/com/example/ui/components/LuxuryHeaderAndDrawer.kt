@@ -1,8 +1,12 @@
 package com.example.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -11,10 +15,13 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -41,39 +49,51 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.audio.CyberHapticsEngine
 import com.example.data.GlassThemeConfig
 import com.example.data.TemperatureUnit
 import com.example.data.update.InAppUpdateUiState
 import com.example.ui.theme.OutfitFontFamily
 import com.example.ui.theme.PlusJakartaSansFontFamily
+import com.example.ui.theme.TactileAmber
 import com.example.ui.theme.TactileCoralRed
+import com.example.ui.theme.TactileCyan
 import com.example.ui.theme.TactileGreen
 import com.example.ui.theme.TactileRoyalBlue
 import com.example.ui.theme.TactileViolet
 import com.example.ui.theme.TextCharcoal
 import com.example.ui.theme.TextSlate
 import com.example.ui.theme.TextWhite
+import java.util.Locale
 
 /**
  * Top Header with Luxury 3-line frosted glass hamburger menu,
@@ -324,7 +344,9 @@ fun LuxurySettingsDrawer(
     onOpenSkinVault: () -> Unit = {},
     updateUiState: InAppUpdateUiState = InAppUpdateUiState(),
     onCheckUpdates: () -> Unit = {},
-    onOpenUpdateDialog: () -> Unit = {}
+    onOpenUpdateDialog: () -> Unit = {},
+    onTriggerUpdate: () -> Unit = {},
+    onCancelDownload: () -> Unit = {}
 ) {
     if (isOpen) {
         BackHandler { onClose() }
@@ -750,78 +772,20 @@ fun LuxurySettingsDrawer(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Compact Auto-Update Card inside Settings Drawer
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF1F5F9))
-                            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                            .padding(14.dp)
-                    ) {
-                        Column {
-                            Text(
-                                text = "حالة التحديث التلقائي",
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = textColor
-                            )
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Text(
-                                text = updateUiState.lastCheckSummary,
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 10.5.sp,
-                                color = TextSlate
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(accentColor)
-                                        .clickable {
-                                            onCheckUpdates()
-                                        }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = if (updateUiState.isChecking) "جاري الفحص..." else "فحص التحديثات",
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = Color.White
-                                    )
-                                }
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
-                                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                                        .clickable {
-                                            onClose()
-                                            onOpenUpdateDialog()
-                                        }
-                                        .padding(vertical = 10.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "نافذة التحديث",
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp,
-                                        color = accentColor
-                                    )
-                                }
-                            }
+                    // Luxurious, Breathing & Dynamic Auto-Update Status Container
+                    LuxuriousAutoUpdateStatusCard(
+                        updateUiState = updateUiState,
+                        accentColor = accentColor,
+                        isDark = isDark,
+                        textColor = textColor,
+                        onCheckUpdates = onCheckUpdates,
+                        onTriggerUpdate = onTriggerUpdate,
+                        onCancelDownload = onCancelDownload,
+                        onOpenUpdateDialog = {
+                            onClose()
+                            onOpenUpdateDialog()
                         }
-                    }
+                    )
 
                     Spacer(modifier = Modifier.height(20.dp))
 
@@ -1006,5 +970,397 @@ private fun DrawerToggleRow(
                 uncheckedTrackColor = Color(0x3394A3B8)
             )
         )
+    }
+}
+
+/**
+ * Luxurious, breathing, smooth & dynamic In-App Auto-Update Status container.
+ * Features breathing glass aura, sweeping specular sheen, live status orb,
+ * version pill, spring progress indicator, and direct in-app download/install actions.
+ */
+@Composable
+private fun LuxuriousAutoUpdateStatusCard(
+    updateUiState: InAppUpdateUiState,
+    accentColor: Color,
+    isDark: Boolean,
+    textColor: Color,
+    onCheckUpdates: () -> Unit,
+    onTriggerUpdate: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onOpenUpdateDialog: () -> Unit
+) {
+    val context = LocalContext.current
+
+    val targetStatusColor = when {
+        updateUiState.isDownloadedReadyToInstall && !updateUiState.needsInstallPermission -> TactileGreen
+        updateUiState.needsInstallPermission -> TactileAmber
+        updateUiState.isDownloading -> accentColor
+        updateUiState.isChecking -> TactileCyan
+        updateUiState.updateAvailable -> TactileAmber
+        else -> TactileGreen
+    }
+    val statusColor by animateColorAsState(
+        targetValue = targetStatusColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "updateCardStatusColor"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "luxuriousUpdateCardAnim")
+    val breathPhase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cardBreathPhase"
+    )
+    val sheenSweep by infiniteTransition.animateFloat(
+        initialValue = -0.35f,
+        targetValue = 1.35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "cardSheenSweep"
+    )
+    val animatedDownloadProgress by animateFloatAsState(
+        targetValue = updateUiState.downloadProgress.coerceIn(0f, 1f),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "drawerDownloadProgress"
+    )
+
+    val cardBaseBrush = if (isDark) {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFF10192D),
+                Color(0xFF0A1120)
+            )
+        )
+    } else {
+        Brush.linearGradient(
+            colors = listOf(
+                Color(0xFFFFFFFF),
+                Color(0xFFF3F7FD)
+            )
+        )
+    }
+
+    val breathingBorderBrush = Brush.linearGradient(
+        colors = listOf(
+            statusColor.copy(alpha = 0.28f + 0.42f * breathPhase),
+            accentColor.copy(alpha = 0.16f + 0.28f * (1f - breathPhase)),
+            statusColor.copy(alpha = 0.22f + 0.34f * breathPhase)
+        )
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("auto_update_status_card")
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.80f,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+            .clip(RoundedCornerShape(20.dp))
+            .background(cardBaseBrush)
+            .drawBehind {
+                // Soft breathing ambient orb glow inside top-right corner
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            statusColor.copy(alpha = (if (isDark) 0.22f else 0.12f) * (0.55f + 0.45f * breathPhase)),
+                            Color.Transparent
+                        ),
+                        center = Offset(size.width * 0.86f, size.height * 0.20f),
+                        radius = size.width * (0.44f + 0.14f * breathPhase)
+                    ),
+                    radius = size.width * 0.6f,
+                    center = Offset(size.width * 0.86f, size.height * 0.20f)
+                )
+
+                // Fluid diagonal specular sheen sweep
+                val sweepStart = Offset(size.width * sheenSweep - size.width * 0.3f, 0f)
+                val sweepEnd = Offset(size.width * sheenSweep + size.width * 0.25f, size.height)
+                drawRoundRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.White.copy(alpha = if (isDark) 0.045f else 0.22f),
+                            Color.Transparent
+                        ),
+                        start = sweepStart,
+                        end = sweepEnd
+                    ),
+                    cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx())
+                )
+            }
+            .border(1.35.dp, breathingBorderBrush, RoundedCornerShape(20.dp))
+            .padding(15.dp)
+    ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Top Header: Breathing Status Orb + Title + Version Capsule
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    // Breathing multi-ring status icon container
+                    Box(
+                        modifier = Modifier.size(36.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .graphicsLayer {
+                                    val s = 0.88f + 0.24f * breathPhase
+                                    scaleX = s
+                                    scaleY = s
+                                    alpha = 0.55f - 0.30f * breathPhase
+                                }
+                                .clip(CircleShape)
+                                .background(statusColor.copy(alpha = 0.35f))
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(statusColor.copy(alpha = if (isDark) 0.24f else 0.15f))
+                                .border(1.dp, statusColor.copy(alpha = 0.65f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (updateUiState.isDownloadedReadyToInstall) {
+                                    Icons.Default.DownloadDone
+                                } else {
+                                    Icons.Default.SystemUpdate
+                                },
+                                contentDescription = null,
+                                tint = statusColor,
+                                modifier = Modifier.size(15.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "حالة التحديث التلقائي",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = textColor,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = when {
+                                updateUiState.isDownloading -> "تنزيل مباشر داخل التطبيق"
+                                updateUiState.isDownloadedReadyToInstall -> "الحزمة جاهزة للتثبيت الفوري"
+                                updateUiState.isChecking -> "جاري الفحص السحابي..."
+                                updateUiState.updateAvailable -> "تحديث جديد متوفر للتحميل"
+                                else -> "تحديث سحابي آمن ومباشر"
+                            },
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.sp,
+                            color = statusColor,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Dynamic Version Pill
+                val versionLabel = if (updateUiState.updateAvailable && !updateUiState.availableVersionName.isNullOrBlank()) {
+                    "v${updateUiState.currentVersionName} → v${updateUiState.availableVersionName}"
+                } else {
+                    "v${updateUiState.currentVersionName}"
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(statusColor.copy(alpha = if (isDark) 0.18f else 0.12f))
+                        .border(1.dp, statusColor.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = versionLabel,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 10.5.sp,
+                        color = statusColor
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Fluidly animated summary text
+            AnimatedContent(
+                targetState = updateUiState.lastCheckSummary,
+                transitionSpec = { fadeIn(tween(220)).togetherWith(fadeOut(tween(180))) },
+                label = "updateSummaryTransition"
+            ) { summary ->
+                Text(
+                    text = summary,
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 11.sp,
+                    color = if (isDark) Color(0xFFCBD5E1) else TextSlate,
+                    lineHeight = 16.sp
+                )
+            }
+
+            // Live In-App Download Progress Section inside the Drawer Card
+            AnimatedVisibility(
+                visible = updateUiState.isDownloading,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { animatedDownloadProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = statusColor,
+                        trackColor = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0),
+                        strokeCap = StrokeCap.Round
+                    )
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val pct = (animatedDownloadProgress * 100).toInt()
+                        Text(
+                            text = if (updateUiState.totalMb > 0f) {
+                                String.format(
+                                    Locale.US,
+                                    "%.1f / %.1f MB",
+                                    updateUiState.downloadedMb,
+                                    updateUiState.totalMb
+                                )
+                            } else {
+                                String.format(Locale.US, "%.1f MB", updateUiState.downloadedMb)
+                            },
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontSize = 10.5.sp,
+                            color = TextSlate
+                        )
+                        Text(
+                            text = "$pct%",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = statusColor
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Action Row with >= 48dp accessible hit targets
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val primaryLabel = when {
+                    updateUiState.needsInstallPermission -> "منح الإذن والتثبيت"
+                    updateUiState.isDownloadedReadyToInstall -> "تثبيت الآن"
+                    updateUiState.isDownloading -> "إلغاء التنزيل"
+                    updateUiState.isChecking -> "جاري الفحص..."
+                    updateUiState.updateAvailable -> "تحديث داخلي"
+                    else -> "فحص التحديثات"
+                }
+
+                val primaryBg = when {
+                    updateUiState.isDownloading -> if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
+                    updateUiState.isDownloadedReadyToInstall -> TactileGreen
+                    updateUiState.updateAvailable -> statusColor
+                    else -> accentColor
+                }
+
+                val primaryTextColor = if (updateUiState.isDownloading) {
+                    if (isDark) TextWhite else TextCharcoal
+                } else {
+                    Color.White
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1.15f)
+                        .heightIn(min = 48.dp)
+                        .minimumInteractiveComponentSize()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(primaryBg)
+                        .clickable(enabled = !updateUiState.isChecking) {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            when {
+                                updateUiState.isDownloading -> onCancelDownload()
+                                updateUiState.isDownloadedReadyToInstall || updateUiState.updateAvailable -> onTriggerUpdate()
+                                else -> onCheckUpdates()
+                            }
+                        }
+                        .padding(horizontal = 10.dp, vertical = 11.dp)
+                        .testTag("check_updates_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = primaryLabel,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.5.sp,
+                        color = primaryTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(0.85f)
+                        .heightIn(min = 48.dp)
+                        .minimumInteractiveComponentSize()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(statusColor.copy(alpha = if (isDark) 0.16f else 0.10f))
+                        .border(1.dp, statusColor.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                        .clickable {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            onOpenUpdateDialog()
+                        }
+                        .padding(horizontal = 8.dp, vertical = 11.dp)
+                        .testTag("open_update_dialog_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "نافذة التحديث",
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        color = statusColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
     }
 }

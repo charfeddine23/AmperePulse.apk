@@ -269,8 +269,15 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 onConfigChange = { viewModel.updateThemeConfig(it) },
                 onOpenSkinVault = { viewModel.toggleSkinVault(true) },
                 updateUiState = updateUiState,
-                onCheckUpdates = { viewModel.checkForAppUpdates(openDialogImmediatelyOnManual = true) },
-                onOpenUpdateDialog = { viewModel.openUpdatePreviewDialog() }
+                onCheckUpdates = {
+                    viewModel.checkForAppUpdates(
+                        openDialogImmediatelyOnManual = true,
+                        autoDownloadIfFound = true
+                    )
+                },
+                onOpenUpdateDialog = { viewModel.openUpdatePreviewDialog() },
+                onTriggerUpdate = { viewModel.triggerAppUpdate(hostContext) },
+                onCancelDownload = { viewModel.cancelAppUpdateDownload() }
             )
 
             // Compact In-App Auto-Update Modal Dialog
@@ -279,7 +286,8 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 themeConfig = themeConfig,
                 accentColor = activeAccent,
                 onDismiss = { viewModel.dismissUpdateDialog() },
-                onUpdateClick = { viewModel.triggerAppUpdate(hostContext) }
+                onUpdateClick = { viewModel.triggerAppUpdate(hostContext) },
+                onCancelDownload = { viewModel.cancelAppUpdateDownload() }
             )
 
             // Cyber Skin (Liquid Glass Vault) Modal Dialog - متجر الأقنعة والثيمات السيبرانية

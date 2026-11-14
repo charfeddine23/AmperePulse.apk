@@ -1,12 +1,21 @@
 package com.example.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,6 +41,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -78,7 +88,8 @@ fun InAppUpdateDialog(
     themeConfig: GlassThemeConfig,
     accentColor: Color,
     onDismiss: () -> Unit,
-    onUpdateClick: () -> Unit
+    onUpdateClick: () -> Unit,
+    onCancelDownload: () -> Unit = {}
 ) {
     if (!state.isDialogVisible) return
 
@@ -155,7 +166,14 @@ fun InAppUpdateDialog(
                 .testTag("in_app_update_dialog")
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = 0.82f,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Top Row: Close (X) on Top-Left matching the reference layout
@@ -381,31 +399,54 @@ fun InAppUpdateDialog(
                     lineHeight = 19.sp
                 )
 
-                // Live Download Progress Bar (shown during Play Flexible Update download)
-                if (state.isDownloading) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    LinearProgressIndicator(
-                        progress = { state.downloadProgress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(4.dp)),
-                        color = accentColor,
-                        trackColor = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0),
-                        strokeCap = StrokeCap.Round
-                    )
-                    if (state.totalMb > 0f) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = String.format(
+                // Live Smooth Animated Download Progress Bar
+                val animatedProgress by animateFloatAsState(
+                    targetValue = state.downloadProgress.coerceIn(0f, 1f),
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "dialogDownloadProgress"
+                )
+
+                AnimatedVisibility(
+                    visible = state.isDownloading,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        LinearProgressIndicator(
+                            progress = { animatedProgress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(7.dp)
+                                .clip(RoundedCornerShape(4.dp)),
+                            color = accentColor,
+                            trackColor = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0),
+                            strokeCap = StrokeCap.Round
+                        )
+                        Spacer(modifier = Modifier.height(7.dp))
+                        val pct = (animatedProgress * 100).toInt()
+                        val sizeText = if (state.totalMb > 0f) {
+                            String.format(
                                 Locale.US,
                                 "%.1f / %.1f MB (%d%%)",
                                 state.downloadedMb,
                                 state.totalMb,
-                                (state.downloadProgress * 100).toInt()
-                            ),
+                                pct
+                            )
+                        } else {
+                            String.format(Locale.US, "%.1f MB (%d%%)", state.downloadedMb, pct)
+                        }
+                        Text(
+                            text = sizeText,
                             fontFamily = PlusJakartaSansFontFamily,
-                            fontSize = 11.sp,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.SemiBold,
                             color = subTextColor
                         )
                     }
@@ -413,10 +454,12 @@ fun InAppUpdateDialog(
 
                 Spacer(modifier = Modifier.height(22.dp))
 
-                // Rounded Full-Width Pill CTA Button ("تحديث")
+                // Rounded Full-Width Pill CTA Button
                 val buttonLabel = when {
-                    state.isDownloadedReadyToInstall -> "تثبيت وإعادة التشغيل"
-                    state.isDownloading -> "جاري التنزيل..."
+                    state.needsInstallPermission -> "منح إذن التثبيت والمتابعة"
+                    state.isDownloadedReadyToInstall -> "تثبيت الآن"
+                    state.isDownloading -> "جاري التنزيل داخل التطبيق..."
+                    state.isChecking -> "جاري الفحص..."
                     else -> "تحديث"
                 }
 
@@ -426,7 +469,7 @@ fun InAppUpdateDialog(
                         CyberSoundscapeEngine.playElectricSpark()
                         onUpdateClick()
                     },
-                    enabled = !state.isDownloading,
+                    enabled = !state.isDownloading && !state.isChecking,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp)
@@ -446,6 +489,31 @@ fun InAppUpdateDialog(
                         fontSize = 16.sp,
                         color = Color.White
                     )
+                }
+
+                AnimatedVisibility(
+                    visible = state.isDownloading,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    TextButton(
+                        onClick = {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            onCancelDownload()
+                        },
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .height(48.dp)
+                            .testTag("update_dialog_cancel_button")
+                    ) {
+                        Text(
+                            text = "إلغاء التنزيل",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            color = subTextColor
+                        )
+                    }
                 }
             }
         }
