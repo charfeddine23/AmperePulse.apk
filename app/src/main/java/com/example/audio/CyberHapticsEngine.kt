@@ -13,10 +13,16 @@ import android.os.VibratorManager
  */
 object CyberHapticsEngine {
 
+    @Volatile
     var isEnabled: Boolean = true
 
+    @Volatile
+    var isAppInForeground: Boolean = true
+
+    private fun canVibrate(): Boolean = isEnabled && isAppInForeground
+
     fun triggerElectricSpark(context: Context) {
-        if (!isEnabled) return
+        if (!canVibrate()) return
         vibratePattern(
             context,
             timings = longArrayOf(0, 15, 30, 20),
@@ -25,7 +31,7 @@ object CyberHapticsEngine {
     }
 
     fun triggerCrystalMorph(context: Context) {
-        if (!isEnabled) return
+        if (!canVibrate()) return
         vibratePattern(
             context,
             timings = longArrayOf(0, 25, 35, 45),
@@ -34,7 +40,7 @@ object CyberHapticsEngine {
     }
 
     fun triggerThermalWarning(context: Context) {
-        if (!isEnabled) return
+        if (!canVibrate()) return
         vibratePattern(
             context,
             timings = longArrayOf(0, 80, 50, 90, 50, 110),
@@ -43,12 +49,12 @@ object CyberHapticsEngine {
     }
 
     fun triggerTactileTick(context: Context) {
-        if (!isEnabled) return
+        if (!canVibrate()) return
         vibrateSingle(context, durationMs = 20, amplitude = 120)
     }
 
     fun triggerBenchmarkSuccess(context: Context) {
-        if (!isEnabled) return
+        if (!canVibrate()) return
         vibratePattern(
             context,
             timings = longArrayOf(0, 30, 40, 50, 30, 60),

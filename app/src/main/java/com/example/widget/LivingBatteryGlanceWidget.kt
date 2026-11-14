@@ -10,6 +10,7 @@ import androidx.glance.GlanceTheme
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
@@ -156,8 +157,27 @@ class LivingBatteryGlanceWidgetReceiver : GlanceAppWidgetReceiver() {
 }
 
 object WidgetTelemetryUpdater {
+    @Volatile
+    private var lastUpdateTimeMs: Long = 0L
+
+    @Volatile
+    private var lastPct: Int = -1
+
+    @Volatile
+    private var lastStateName: String = ""
+
     suspend fun update(context: Context, pct: Int, tempC: Float, voltageMv: Int, currentMa: Int, stateName: String) {
-        val prefs = context.getSharedPreferences("ampere_pulse_widget_prefs", Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val stateChanged = pct != lastPct || stateName != lastStateName
+        val minCooldownElapsed = (now - lastUpdateTimeMs) >= 3_000L
+        val periodicIntervalElapsed = (now - lastUpdateTimeMs) >= 15_000L
+
+        if (!(periodicIntervalElapsed || (stateChanged && minCooldownElapsed))) {
+            return
+        }
+
+        val appContext = context.applicationContext
+        val prefs = appContext.getSharedPreferences("ampere_pulse_widget_prefs", Context.MODE_PRIVATE)
         prefs.edit()
             .putInt("battery_pct", pct)
             .putFloat("battery_temp", tempC)
@@ -167,7 +187,18 @@ object WidgetTelemetryUpdater {
             .apply()
 
         try {
-            LivingBatteryGlanceWidget().updateAll(context)
+            val glanceIds = GlanceAppWidgetManager(appContext).getGlanceIds(LivingBatteryGlanceWidget::class.java)
+            if (glanceIds.isEmpty()) {
+                lastUpdateTimeMs = now
+                lastPct = pct
+                lastStateName = stateName
+                return
+            }
+
+            lastUpdateTimeMs = now
+            lastPct = pct
+            lastStateName = stateName
+            LivingBatteryGlanceWidget().updateAll(appContext)
         } catch (_: Exception) {}
     }
 }

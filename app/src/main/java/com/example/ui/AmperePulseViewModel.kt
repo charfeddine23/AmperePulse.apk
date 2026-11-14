@@ -13,7 +13,12 @@ import com.example.data.PrizeRoadData
 import com.example.data.SessionLog
 import com.example.data.StreakData
 import com.example.data.TechCrewMember
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import android.content.Context
 import com.example.data.TelemetryPoint
+import com.example.data.update.InAppUpdateEngine
+import com.example.data.update.InAppUpdateUiState
 import com.example.ui.components.NavigationTab
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -58,31 +63,89 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     private val _isSkinVaultOpen = MutableStateFlow(false)
     val isSkinVaultOpen: StateFlow<Boolean> = _isSkinVaultOpen.asStateFlow()
 
+    private val updateEngine = InAppUpdateEngine(application.applicationContext)
+    val updateUiState: StateFlow<InAppUpdateUiState> = updateEngine.uiState
+
     fun selectTab(tab: NavigationTab) {
         _selectedTab.value = tab
     }
 
     init {
-        // Apply persisted sound preferences on startup
+        // Apply persisted sound & haptic preferences on startup
         com.example.audio.CyberSoundscapeEngine.isEnabled = _themeConfig.value.soundEffectsEnabled
+        com.example.audio.CyberHapticsEngine.isEnabled = _themeConfig.value.hapticFeedbackEnabled
         repository.updateCurrentCalibration(
             multiplier = _themeConfig.value.currentMultiplier,
             zeroOffsetMa = _themeConfig.value.currentZeroOffsetMa
         )
+        if (_themeConfig.value.autoUpdateEnabled) {
+            updateEngine.checkForUpdates(autoShowOnAvailable = true)
+        }
+    }
+
+    fun attachUpdateLauncher(launcher: ActivityResultLauncher<IntentSenderRequest>) {
+        updateEngine.attachLauncher(launcher)
+    }
+
+    fun checkForAppUpdates(openDialogImmediatelyOnManual: Boolean = false) {
+        updateEngine.checkForUpdates(
+            autoShowOnAvailable = true,
+            openDialogImmediatelyOnManual = openDialogImmediatelyOnManual
+        )
+    }
+
+    fun openUpdatePreviewDialog() {
+        updateEngine.openUpdateDialogPreview()
+    }
+
+    fun dismissUpdateDialog() {
+        updateEngine.dismissDialog()
+    }
+
+    fun triggerAppUpdate(hostContext: Context) {
+        updateEngine.startOrCompleteUpdate(hostContext)
+    }
+
+    fun onUpdateFlowResult(resultCode: Int) {
+        updateEngine.onUpdateFlowResult(resultCode)
+    }
+
+    fun onResumeUpdateCheck() {
+        if (_themeConfig.value.autoUpdateEnabled) {
+            updateEngine.checkForUpdates(autoShowOnAvailable = true)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        updateEngine.unregisterListener()
+    }
+
+    fun setAppInForeground(inForeground: Boolean) {
+        repository.setAppInForeground(inForeground)
+        com.example.audio.CyberSoundscapeEngine.isAppInForeground = inForeground
+        com.example.audio.CyberHapticsEngine.isAppInForeground = inForeground
+    }
+
+    fun setSohPageActive(active: Boolean) {
+        repository.setSohPageActive(active)
     }
 
     fun updateThemeConfig(config: GlassThemeConfig) {
         _themeConfig.value = config
         prefsManager.saveThemeConfig(config)
         com.example.audio.CyberSoundscapeEngine.isEnabled = config.soundEffectsEnabled
+        com.example.audio.CyberHapticsEngine.isEnabled = config.hapticFeedbackEnabled
         repository.updateCurrentCalibration(
             multiplier = config.currentMultiplier,
             zeroOffsetMa = config.currentZeroOffsetMa
         )
         if (config.backgroundServiceEnabled) {
             com.example.service.TelemetryForegroundService.startService(getApplication())
+            com.example.service.AlarmScheduler.scheduleNextAlarm(getApplication())
         } else {
             com.example.service.TelemetryForegroundService.stopService(getApplication())
+            com.example.service.AlarmScheduler.cancelAlarm(getApplication())
         }
     }
 
@@ -162,8 +225,8 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         repository.runCableDiagnosticSweep(tierOverride)
     }
 
-    fun recalibrateSohPrediction() {
-        repository.recalibrateSohPrediction()
+    fun recalibrateSohPrediction(addLog: Boolean = true) {
+        repository.recalibrateSohPrediction(addLog = addLog)
     }
 
     fun toggleThermalSimulation(forceOverheat: Boolean? = null) {

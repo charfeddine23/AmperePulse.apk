@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.animation.scaleIn
@@ -28,14 +29,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.components.CyberSkinVaultDialog
 import com.example.ui.components.FloatingGlassNavBar
+import com.example.ui.components.InAppUpdateDialog
 import com.example.ui.components.LuxurySettingsDrawer
 import com.example.ui.components.LuxuryTopBar
 import com.example.ui.components.NavigationTab
 import com.example.ui.components.thermalLiquidGlassBackground
 import com.example.ui.screens.Page1LivingBatteryScreen
-import com.example.ui.screens.Page2StatisticsScreen
 import com.example.ui.screens.Page3BatterySohScreen
 import com.example.ui.screens.Page4CableDnaScreen
 import com.example.ui.screens.Page5MySpaceScreen
@@ -66,8 +68,14 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val isSkinVaultOpen by viewModel.isSkinVaultOpen.collectAsState()
     val isAutoSensorMode by viewModel.isAutoSensorMode.collectAsState()
     val userAccount by viewModel.userAccount.collectAsState()
+    val updateUiState by viewModel.updateUiState.collectAsState()
+    val hostContext = LocalContext.current
 
     val isDark = themeConfig.isDarkMode
+
+    LaunchedEffect(selectedTab) {
+        viewModel.setSohPageActive(selectedTab == NavigationTab.BATTERY_SOH)
+    }
 
     // Handle back button: first close settings drawer, then return to BATTERY page
     BackHandler(enabled = isSettingsOpen) {
@@ -148,10 +156,9 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     title = "AMPERE PULSE",
                     subtitle = when (selectedTab) {
                         NavigationTab.BATTERY -> "PAGE 1: LIVING BATTERY MATRIX"
-                        NavigationTab.STATISTICS -> "PAGE 2: HOURLY BATTERY STATISTICS (ROOM WAL)"
-                        NavigationTab.BATTERY_SOH -> "PAGE 3: BATTERY SOH & CYCLE PREDICTOR"
-                        NavigationTab.CABLE_DNA -> "PAGE 4: CABLE DNA & CHARGER ANALYZER"
-                        NavigationTab.MY_SPACE -> "PAGE 5: TELEMETRY SPACE & LOG"
+                        NavigationTab.BATTERY_SOH -> "PAGE 2: BATTERY SOH & CYCLE PREDICTOR"
+                        NavigationTab.CABLE_DNA -> "PAGE 3: CABLE DNA & CHARGER ANALYZER"
+                        NavigationTab.MY_SPACE -> "PAGE 4: TELEMETRY SPACE & LOG"
                     },
                     isMenuOpen = isSettingsOpen,
                     onMenuToggle = { viewModel.toggleSettingsMenu(!isSettingsOpen) },
@@ -173,28 +180,33 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                             transitionSpec = {
                                 val isMovingForward = targetState.ordinal > initialState.ordinal
                                 (slideInHorizontally(
-                                    initialOffsetX = { if (isMovingForward) it else -it },
+                                    initialOffsetX = { if (isMovingForward) (it * 0.40f).toInt() else (-it * 0.40f).toInt() },
                                     animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
+                                        dampingRatio = 0.82f,
+                                        stiffness = Spring.StiffnessMedium
                                     )
                                 ) + scaleIn(
-                                    initialScale = 0.94f,
+                                    initialScale = 0.96f,
                                     animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioLowBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
+                                        dampingRatio = 0.82f,
+                                        stiffness = Spring.StiffnessMedium
                                     )
-                                ) + fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow))).togetherWith(
+                                ) + fadeIn(
+                                    animationSpec = spring(stiffness = Spring.StiffnessMedium)
+                                )).togetherWith(
                                     slideOutHorizontally(
-                                        targetOffsetX = { if (isMovingForward) -it else it },
-                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                        targetOffsetX = { if (isMovingForward) (-it * 0.25f).toInt() else (it * 0.25f).toInt() },
+                                        animationSpec = spring(
+                                            dampingRatio = 0.85f,
+                                            stiffness = Spring.StiffnessMedium
+                                        )
                                     ) + scaleOut(
-                                        targetScale = 0.96f,
-                                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow)
+                                        targetScale = 0.97f,
+                                        animationSpec = spring(stiffness = Spring.StiffnessMedium)
                                     ) + fadeOut()
                                 )
                             },
-                            label = "90HzAdaptiveDropletPageTransition"
+                            label = "120HzUltraFluidPageTransition"
                         ) { tab ->
                             when (tab) {
                                 NavigationTab.BATTERY -> Page1LivingBatteryScreen(
@@ -208,17 +220,11 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                     onNavigateToPrizeRoad = { viewModel.selectTab(NavigationTab.BATTERY_SOH) },
                                     onToggleThermalTest = { viewModel.toggleThermalSimulation() }
                                 )
-                                NavigationTab.STATISTICS -> Page2StatisticsScreen(
-                                    telemetry = telemetry,
-                                    hourlyStats = hourlyStats,
-                                    themeConfig = themeConfig,
-                                    onResetOrSeedStats = { viewModel.seedOrResetHourlyStats() }
-                                )
                                 NavigationTab.BATTERY_SOH -> Page3BatterySohScreen(
                                     telemetry = telemetry,
                                     themeConfig = themeConfig,
                                     sohPrediction = sohPrediction,
-                                    onRecalibrateSoh = { viewModel.recalibrateSohPrediction() }
+                                    onRecalibrateSoh = { addLog -> viewModel.recalibrateSohPrediction(addLog) }
                                 )
                                 NavigationTab.CABLE_DNA -> Page4CableDnaScreen(
                                     telemetry = telemetry,
@@ -251,6 +257,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 onTabSelected = { viewModel.selectTab(it) },
                 accentColor = activeAccent,
                 isDarkMode = isDark,
+                showLiquidDroplet = themeConfig.showLiquidDroplet,
                 modifier = Modifier.align(Alignment.BottomCenter)
             )
 
@@ -260,7 +267,19 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 onClose = { viewModel.toggleSettingsMenu(false) },
                 themeConfig = themeConfig,
                 onConfigChange = { viewModel.updateThemeConfig(it) },
-                onOpenSkinVault = { viewModel.toggleSkinVault(true) }
+                onOpenSkinVault = { viewModel.toggleSkinVault(true) },
+                updateUiState = updateUiState,
+                onCheckUpdates = { viewModel.checkForAppUpdates(openDialogImmediatelyOnManual = true) },
+                onOpenUpdateDialog = { viewModel.openUpdatePreviewDialog() }
+            )
+
+            // Compact In-App Auto-Update Modal Dialog
+            InAppUpdateDialog(
+                state = updateUiState,
+                themeConfig = themeConfig,
+                accentColor = activeAccent,
+                onDismiss = { viewModel.dismissUpdateDialog() },
+                onUpdateClick = { viewModel.triggerAppUpdate(hostContext) }
             )
 
             // Cyber Skin (Liquid Glass Vault) Modal Dialog - متجر الأقنعة والثيمات السيبرانية

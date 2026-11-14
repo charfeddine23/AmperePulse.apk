@@ -81,12 +81,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-enum class NavigationTab(val label: String, val icon: ImageVector, val tag: String) {
-    BATTERY("Battery", Icons.Default.Bolt, "nav_battery"),
-    STATISTICS("Stats", Icons.Default.QueryStats, "nav_statistics"),
-    BATTERY_SOH("Cell SOH", Icons.Default.HealthAndSafety, "nav_soh"),
-    CABLE_DNA("Cable DNA", Icons.Default.Cable, "nav_cable_dna"),
-    MY_SPACE("My Space", Icons.Default.Tune, "nav_my_space")
+enum class NavigationTab(val label: String, val arabicLabel: String, val icon: ImageVector, val tag: String) {
+    BATTERY("Battery", "البطارية", Icons.Default.Bolt, "nav_battery"),
+    BATTERY_SOH("Cell SOH", "صحة الخلية", Icons.Default.HealthAndSafety, "nav_soh"),
+    CABLE_DNA("Cable DNA", "كابل DNA", Icons.Default.Cable, "nav_cable_dna"),
+    MY_SPACE("My Space", "مساحتي", Icons.Default.Tune, "nav_my_space");
+
+    fun getLocalizedLabel(isArabic: Boolean): String = if (isArabic) arabicLabel else label
 }
 
 /**
@@ -103,7 +104,8 @@ fun FloatingGlassNavBar(
     onTabSelected: (NavigationTab) -> Unit,
     modifier: Modifier = Modifier,
     isDarkMode: Boolean = false,
-    accentColor: Color = TactileRoyalBlue
+    accentColor: Color = TactileRoyalBlue,
+    showLiquidDroplet: Boolean = true
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
@@ -173,44 +175,33 @@ fun FloatingGlassNavBar(
                 }
             }
 
-            // External selection sync (when user changes tab outside or taps directly)
-            LaunchedEffect(selectedTab, hasInitialized) {
-                if (hasInitialized && !isDragging) {
-                    val targetX = tabCenterX(selectedTab.ordinal)
-                    val currentX = dropletX.value
-                    val diff = targetX - currentX
-                    activeHoveredIndex = selectedTab.ordinal
+    // External selection sync (when user changes tab outside or taps directly with a single click)
+    LaunchedEffect(selectedTab, hasInitialized) {
+        if (hasInitialized && !isDragging) {
+            val targetX = tabCenterX(selectedTab.ordinal)
+            val currentX = dropletX.value
+            val diff = targetX - currentX
+            activeHoveredIndex = selectedTab.ordinal
 
-                    if (abs(diff) > 2f) {
-                        // Moving Left (target < current) -> tail points Right (+1f)
-                        // Moving Right (target > current) -> tail points Left (-1f)
-                        val dir = if (diff < 0) 1f else -1f
-                        coroutineScope.launch {
-                            tailDirection.snapTo(dir)
-                            launch {
-                                tailStretch.animateTo(
-                                    targetValue = snapStretchPx,
-                                    animationSpec = tween(120)
-                                )
-                                tailStretch.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = spring(
-                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                        stiffness = Spring.StiffnessMediumLow
-                                    )
-                                )
-                            }
-                            dropletX.animateTo(
-                                targetValue = targetX,
-                                animationSpec = spring(
-                                    dampingRatio = Spring.DampingRatioLowBouncy,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            )
-                        }
+            if (abs(diff) > 2f) {
+                coroutineScope.launch {
+                    // Single tap transition: strictly WITHOUT TAIL (tailStretch = 0f)
+                    // The squircle / rounded square glides smoothly to the selected tab with zero tail formation
+                    launch {
+                        tailStretch.snapTo(0f)
                     }
+                    // Liquid squircle glide with organic spring physics
+                    dropletX.animateTo(
+                        targetValue = targetX,
+                        animationSpec = spring(
+                            dampingRatio = 0.76f,
+                            stiffness = Spring.StiffnessMediumLow
+                        )
+                    )
                 }
             }
+        }
+    }
 
             // Interactive Continuous Pointer Gesture Handler ("من دون نزع يدي")
             Box(
@@ -350,18 +341,20 @@ fun FloatingGlassNavBar(
                     }
             ) {
                 // Layer 1: Apple Liquid Glass Droplet Canvas (underneath tabs)
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawAppleLiquidGlassDroplet(
-                        currentX = dropletX.value,
-                        centerY = size.height / 2f,
-                        stretch = tailStretch.value,
-                        tailDir = tailDirection.value,
-                        isDragging = isDragging,
-                        isDarkMode = isDarkMode,
-                        accentColor = accentColor,
-                        baseWidth = tabWidthPx * 0.88f,
-                        baseHeight = 44.dp.toPx().coerceAtMost(size.height - 4.dp.toPx())
-                    )
+                if (showLiquidDroplet) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        drawAppleLiquidGlassDroplet(
+                            currentX = dropletX.value,
+                            centerY = size.height / 2f,
+                            stretch = tailStretch.value,
+                            tailDir = tailDirection.value,
+                            isDragging = isDragging,
+                            isDarkMode = isDarkMode,
+                            accentColor = accentColor,
+                            baseWidth = tabWidthPx * 0.88f,
+                            baseHeight = 44.dp.toPx().coerceAtMost(size.height - 4.dp.toPx())
+                        )
+                    }
                 }
 
                 // Layer 2: Interactive Tabs Row (Icons and Labels)
@@ -410,8 +403,9 @@ fun FloatingGlassNavBar(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
+                                val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
                                 Text(
-                                    text = tab.label,
+                                    text = tab.getLocalizedLabel(isRtl),
                                     fontFamily = OutfitFontFamily,
                                     fontWeight = if (isCurrentActive) FontWeight.Bold else FontWeight.Medium,
                                     fontSize = 10.sp,
@@ -479,98 +473,114 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
 
     // Fluid volume preservation: minor waist thinning perpendicular to motion
     val thinning = R * (0.14f * stretchRatio)
-    val Ry = (R - thinning).coerceAtLeast(R * 0.75f)
+    val Ry = (R - thinning).coerceAtLeast(R * 0.72f)
 
     // Tail tip thickness continuously tapers from R down to a fluid meniscus tip as stretch increases
-    // At stretch == 0: tailTipRadius == R (exact circular symmetry!)
-    // As stretch -> max: tailTipRadius shrinks smoothly to a rounded liquid droplet tip
     val minTipRadius = with(this) { 4.5.dp.toPx() }
     val tailTipRadius = R - (R - minTipRadius) * stretchRatio
 
-    // Resting pill spread when not dragging and stationary
-    val pillSpread = if (!isDragging && stretch <= 1f) (baseWidth * 0.44f - R).coerceAtLeast(0f) else 0f
+    // Resting squircle geometry (مربع مستدير الحواف عند عدم اللمس)
+    // Dimension is approximately 48dp x 44dp with 14dp rounded corners, perfectly framing the active icon & label
+    val squircleHalfWidth = (baseHeight * 0.54f).coerceAtLeast(22.dp.toPx())
+    val squircleHalfHeight = (baseHeight * 0.46f).coerceAtLeast(20.dp.toPx())
+    val squircleCornerRadius = 14.dp.toPx()
 
-    // Leading dome edge (moves forward slightly with speed)
-    val leadExt = R + pillSpread + (thinning * 0.25f)
-    val leadingX = currentX - (tailSign * leadExt)
-
-    // Trailing tip edge
-    val tailExt = R + pillSpread + tailLength
-    val tailTipX = currentX + (tailSign * tailExt)
-
-    // Standard cubic Bézier circular arc approximation constant: k = 4 * (sqrt(2) - 1) / 3 ≈ 0.55228475f
-    val kCircle = 0.55228475f
+    // Smooth transition from squircle to moving droplet
+    val isRestingSquircle = !isDragging && stretch <= 0.8f
 
     val activePath = Path().apply {
-        // Start at leading apex
-        moveTo(leadingX, centerY)
+        if (isRestingSquircle) {
+            // Pristine Apple Liquid Glass Rounded Square (مربع مستدير الحواف)
+            addRoundRect(
+                RoundRect(
+                    rect = Rect(
+                        left = currentX - squircleHalfWidth,
+                        top = centerY - squircleHalfHeight,
+                        right = currentX + squircleHalfWidth,
+                        bottom = centerY + squircleHalfHeight
+                    ),
+                    cornerRadius = CornerRadius(squircleCornerRadius, squircleCornerRadius)
+                )
+            )
+        } else {
+            // Dynamic Viscous Liquid Droplet with realistic fluid physics & meniscus tail
+            val morphFactor = stretchRatio.coerceIn(0f, 1f)
+            val baseLeadRadius = squircleHalfWidth * (1f - morphFactor) + R * morphFactor
+            val leadExt = baseLeadRadius + (thinning * 0.25f)
+            val dynamicLeadingX = currentX - (tailSign * leadExt)
+            val dynamicTailTipX = currentX + (tailSign * (baseLeadRadius + tailLength))
 
-        // Segment 1: Leading edge -> Top crest
-        cubicTo(
-            x1 = leadingX,
-            y1 = centerY - Ry * kCircle,
-            x2 = currentX - tailSign * (R * kCircle + pillSpread * 0.5f),
-            y2 = centerY - Ry,
-            x3 = currentX - tailSign * (pillSpread * 0.2f),
-            y3 = centerY - Ry
-        )
+            val kCircle = 0.55228475f
 
-        // Segment 2: Top crest -> Tail tip top
-        // As stretch grows, control points smoothly transition from circular quadrant to fluid meniscus
-        val cp1X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
-        val cp1Y = centerY - Ry
-        val cp2X = tailTipX - tailSign * (tailTipRadius * 1.1f)
-        val cp2Y = centerY - tailTipRadius
-        val tipTopX = tailTipX
-        val tipTopY = centerY - tailTipRadius
+            moveTo(dynamicLeadingX, centerY)
 
-        cubicTo(
-            x1 = cp1X,
-            y1 = cp1Y,
-            x2 = cp2X,
-            y2 = cp2Y,
-            x3 = tipTopX,
-            y3 = tipTopY
-        )
+            // Segment 1: Leading apex -> Top crest
+            cubicTo(
+                x1 = dynamicLeadingX,
+                y1 = centerY - Ry * kCircle,
+                x2 = currentX - tailSign * (R * kCircle),
+                y2 = centerY - Ry,
+                x3 = currentX,
+                y3 = centerY - Ry
+            )
 
-        // Segment 3: Round the tail tip continuously
-        cubicTo(
-            x1 = tailTipX + tailSign * tailTipRadius * kCircle,
-            y1 = centerY - tailTipRadius,
-            x2 = tailTipX + tailSign * tailTipRadius * kCircle,
-            y2 = centerY + tailTipRadius,
-            x3 = tailTipX,
-            y3 = centerY + tailTipRadius
-        )
+            // Segment 2: Top crest -> Tail tip top
+            val cp1X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
+            val cp1Y = centerY - Ry
+            val cp2X = dynamicTailTipX - tailSign * (tailTipRadius * 1.1f)
+            val cp2Y = centerY - tailTipRadius
+            val tipTopX = dynamicTailTipX
+            val tipTopY = centerY - tailTipRadius
 
-        // Segment 4: Tail tip bottom -> Bottom crest
-        val cp3X = tailTipX - tailSign * (tailTipRadius * 1.1f)
-        val cp3Y = centerY + tailTipRadius
-        val cp4X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
-        val cp4Y = centerY + Ry
-        val crestBottomX = currentX - tailSign * (pillSpread * 0.2f)
-        val crestBottomY = centerY + Ry
+            cubicTo(
+                x1 = cp1X,
+                y1 = cp1Y,
+                x2 = cp2X,
+                y2 = cp2Y,
+                x3 = tipTopX,
+                y3 = tipTopY
+            )
 
-        cubicTo(
-            x1 = cp3X,
-            y1 = cp3Y,
-            x2 = cp4X,
-            y2 = cp4Y,
-            x3 = crestBottomX,
-            y3 = crestBottomY
-        )
+            // Segment 3: Round the tail tip continuously
+            cubicTo(
+                x1 = dynamicTailTipX + tailSign * tailTipRadius * kCircle,
+                y1 = centerY - tailTipRadius,
+                x2 = dynamicTailTipX + tailSign * tailTipRadius * kCircle,
+                y2 = centerY + tailTipRadius,
+                x3 = dynamicTailTipX,
+                y3 = centerY + tailTipRadius
+            )
 
-        // Segment 5: Bottom crest -> Leading edge
-        cubicTo(
-            x1 = currentX - tailSign * (R * kCircle + pillSpread * 0.5f),
-            y1 = centerY + Ry,
-            x2 = leadingX,
-            y2 = centerY + Ry * kCircle,
-            x3 = leadingX,
-            y3 = centerY
-        )
-        close()
+            // Segment 4: Tail tip bottom -> Bottom crest
+            val cp3X = dynamicTailTipX - tailSign * (tailTipRadius * 1.1f)
+            val cp3Y = centerY + tailTipRadius
+            val cp4X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
+            val cp4Y = centerY + Ry
+
+            cubicTo(
+                x1 = cp3X,
+                y1 = cp3Y,
+                x2 = cp4X,
+                y2 = cp4Y,
+                x3 = currentX,
+                y3 = centerY + Ry
+            )
+
+            // Segment 5: Bottom crest -> Leading apex
+            cubicTo(
+                x1 = currentX - tailSign * (R * kCircle),
+                y1 = centerY + Ry,
+                x2 = dynamicLeadingX,
+                y2 = centerY + Ry * kCircle,
+                x3 = dynamicLeadingX,
+                y3 = centerY
+            )
+            close()
+        }
     }
+
+    val leadingX = if (isRestingSquircle) currentX - squircleHalfWidth else currentX - (tailSign * (R + tailLength * 0.2f))
+    val tailTipX = if (isRestingSquircle) currentX + squircleHalfWidth else currentX + (tailSign * (R + tailLength))
 
     // 2. Apple Liquid Glass Translucent Body (with dynamic internal refraction)
     val startGradientX = if (tailSign >= 0) leadingX else tailTipX
@@ -602,56 +612,77 @@ private fun DrawScope.drawAppleLiquidGlassDroplet(
 
     drawPath(path = activePath, brush = glassFill)
 
-    // 3. Continuous Leading Edge Dome Specular Lens Highlight
-    // Smoothly blends from pure round lens highlight (stretch=0) into directional front dome lens
-    val leadingSpecular = Path().apply {
-        moveTo(currentX - tailSign * R * 0.45f, centerY - Ry * 0.68f)
-        cubicTo(
-            x1 = leadingX + tailSign * (R * 0.12f),
-            y1 = centerY - Ry * 0.36f,
-            x2 = leadingX + tailSign * (R * 0.12f),
-            y2 = centerY + Ry * 0.36f,
-            x3 = currentX - tailSign * R * 0.45f,
-            y3 = centerY + Ry * 0.68f
-        )
-    }
-    drawPath(
-        path = leadingSpecular,
-        brush = Brush.verticalGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.White.copy(alpha = 0.88f),
-                Color.White.copy(alpha = 0.15f)
+    // 3. Specular Lens Highlight
+    if (isRestingSquircle) {
+        // Luxury Top Glass Arc for Squircle
+        val squircleShimmer = Path().apply {
+            moveTo(currentX - squircleHalfWidth * 0.7f, centerY - squircleHalfHeight + 3.dp.toPx())
+            lineTo(currentX + squircleHalfWidth * 0.7f, centerY - squircleHalfHeight + 3.dp.toPx())
+        }
+        drawPath(
+            path = squircleShimmer,
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
+                    Color.Transparent
+                )
             ),
-            startY = centerY - Ry * 0.68f,
-            endY = centerY + Ry * 0.68f
-        ),
-        style = Stroke(width = with(this) { 2.2.dp.toPx() }, cap = StrokeCap.Round)
-    )
-
-    // 4. Top Crest Specular Shimmer (Gleams across the upper curvature)
-    val topSpecular = Path().apply {
-        moveTo(currentX - tailSign * R * 0.5f, centerY - Ry * 0.72f)
-        cubicTo(
-            x1 = currentX,
-            y1 = centerY - Ry * 0.94f,
-            x2 = currentX + tailSign * (R * 0.4f + tailLength * 0.35f),
-            y2 = centerY - (Ry * 0.90f - thinning * 0.4f),
-            x3 = currentX + tailSign * (R * 0.75f + tailLength * 0.60f),
-            y3 = centerY - (tailTipRadius * 1.15f)
+            style = Stroke(width = with(this) { 1.8.dp.toPx() }, cap = StrokeCap.Round)
+        )
+    } else {
+        // Continuous Leading Edge Dome Specular Lens Highlight for Droplet
+        val leadingSpecular = Path().apply {
+            moveTo(currentX - tailSign * R * 0.45f, centerY - Ry * 0.68f)
+            cubicTo(
+                x1 = leadingX + tailSign * (R * 0.12f),
+                y1 = centerY - Ry * 0.36f,
+                x2 = leadingX + tailSign * (R * 0.12f),
+                y2 = centerY + Ry * 0.36f,
+                x3 = currentX - tailSign * R * 0.45f,
+                y3 = centerY + Ry * 0.68f
+            )
+        }
+        drawPath(
+            path = leadingSpecular,
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    Color.White.copy(alpha = 0.15f),
+                    Color.White.copy(alpha = 0.88f),
+                    Color.White.copy(alpha = 0.15f)
+                ),
+                startY = centerY - Ry * 0.68f,
+                endY = centerY + Ry * 0.68f
+            ),
+            style = Stroke(width = with(this) { 2.2.dp.toPx() }, cap = StrokeCap.Round)
         )
     }
-    drawPath(
-        path = topSpecular,
-        brush = Brush.horizontalGradient(
-            colors = listOf(
-                Color.Transparent,
-                Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
-                Color.Transparent
+
+    // 4. Top Crest Specular Shimmer (Gleams across the upper curvature when moving)
+    if (!isRestingSquircle) {
+        val topSpecular = Path().apply {
+            moveTo(currentX - tailSign * R * 0.5f, centerY - Ry * 0.72f)
+            cubicTo(
+                x1 = currentX,
+                y1 = centerY - Ry * 0.94f,
+                x2 = currentX + tailSign * (R * 0.4f + tailLength * 0.35f),
+                y2 = centerY - (Ry * 0.90f - thinning * 0.4f),
+                x3 = currentX + tailSign * (R * 0.75f + tailLength * 0.60f),
+                y3 = centerY - (tailTipRadius * 1.15f)
             )
-        ),
-        style = Stroke(width = with(this) { 1.6.dp.toPx() }, cap = StrokeCap.Round)
-    )
+        }
+        drawPath(
+            path = topSpecular,
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
+                    Color.Transparent
+                )
+            ),
+            style = Stroke(width = with(this) { 1.6.dp.toPx() }, cap = StrokeCap.Round)
+        )
+    }
 
     // 5. Outer Liquid Glass Rim Border with Pristine Refraction
     drawPath(

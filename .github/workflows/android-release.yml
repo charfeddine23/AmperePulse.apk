@@ -4,14 +4,16 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build-and-release:
-    name: Build & Publish Release APK
+    name: Build & Publish Latest Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,7 +32,7 @@ jobs:
       - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
 
-      - name: Setup Signing Keystore
+      - name: Setup Consistent Release Signing Keystore
         id: setup_keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
@@ -39,70 +41,97 @@ jobs:
         run: |
           KEYSTORE_FILE="${{ github.workspace }}/my-upload-key.jks"
 
-          # 1. Use custom GitHub Secret if configured
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "Using KEYSTORE_BASE64 provided in GitHub Secrets."
             echo "$KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_FILE"
             echo "STORE_PASSWORD=${SECRET_STORE_PASSWORD:-android}" >> $GITHUB_ENV
             echo "KEY_PASSWORD=${SECRET_KEY_PASSWORD:-android}" >> $GITHUB_ENV
-
-          # 2. Otherwise use the integrated repository release keystore
           elif [ -f "$KEYSTORE_FILE" ]; then
-            echo "Using repository release keystore (my-upload-key.jks)."
+            echo "Using repository release keystore (my-upload-key.jks) for in-place updates."
             echo "STORE_PASSWORD=android" >> $GITHUB_ENV
             echo "KEY_PASSWORD=android" >> $GITHUB_ENV
-
-          # 3. Fallback: generate fresh upload keystore automatically
           else
-            echo "Generating release keystore automatically..."
-            keytool -genkeypair -v -keystore "$KEYSTORE_FILE" \
-              -alias "upload" -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "android" -keypass "android" \
-              -dname "CN=AmperePulse, OU=Release, O=AIStudio, L=Global, S=Global, C=US"
-            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+            echo "Error: Release keystore my-upload-key.jks is missing!"
+            exit 1
           fi
 
-          # Ensure keystore is present in root and app module directories
           cp "$KEYSTORE_FILE" "${{ github.workspace }}/app/my-upload-key.jks"
           echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> $GITHUB_ENV
-          echo "Keystore is ready at $KEYSTORE_FILE"
 
-      - name: Extract Version Name & Configure Tag
+      - name: Compute Auto-Incremented Version (v1.x.x) & APK Name
         id: versioning
         run: |
-          VERSION_NAME=$(grep -E 'versionName\s*=\s*' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
-          if [ -z "$VERSION_NAME" ]; then
-            VERSION_NAME="1.0"
+          RUN_NUM=${{ github.run_number }}
+          MINOR=$(( RUN_NUM / 100 ))
+          PATCH=$(( RUN_NUM % 100 ))
+          VERSION_NAME="1.${MINOR}.${PATCH}"
+          VERSION_CODE=$(( 100 + RUN_NUM ))
+
+          RAW_APP_NAME=$(grep -E 'name="app_name"' app/src/main/res/values/strings.xml | head -n 1 | sed -E 's/.*>([^<]+)<.*/\1/' | xargs)
+          if [ -z "$RAW_APP_NAME" ]; then
+            RAW_APP_NAME="Ampere Pulse"
           fi
-          echo "Extracted Version Name: $VERSION_NAME"
+          APP_NAME_FORMATTED=$(echo "$RAW_APP_NAME" | tr ' ' '.')
+
+          APK_FILENAME="${APP_NAME_FORMATTED}.v${VERSION_NAME}.apk"
+          RELEASE_TAG="v${VERSION_NAME}"
+
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "APK_FILENAME=$APK_FILENAME" >> $GITHUB_ENV
 
-          TAG="v${VERSION_NAME}"
-          if git ls-remote --tags origin "$TAG" | grep -q "$TAG"; then
-            echo "Tag $TAG already exists on remote. Appending build run number."
-            TAG="${TAG}-build${{ github.run_number }}"
-          fi
-          echo "Release Tag: $TAG"
-          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
+          echo "Auto Version -> Name: $VERSION_NAME, Code: $VERSION_CODE, APK: $APK_FILENAME"
 
-      - name: Build Release APK
+      - name: Build Signed Release APK
         env:
           KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          ./gradlew assembleRelease \
+            -PversionCode="${{ env.VERSION_CODE }}" \
+            -PversionName="${{ env.VERSION_NAME }}" \
+            --stacktrace --no-daemon
 
-      - name: Create GitHub Release & Upload APK
+          BUILT_APK="app/build/outputs/apk/release/app-release.apk"
+          RENAMED_APK="app/build/outputs/apk/release/${{ env.APK_FILENAME }}"
+          mv "$BUILT_APK" "$RENAMED_APK"
+          ls -lh "$RENAMED_APK"
+
+      - name: Delete All Old Releases & Tags (Keep Only Latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAGS=$(gh release list --repo "${{ github.repository }}" --limit 100 --json tagName -q '.[].tagName')
+          for tag in $TAGS; do
+            echo "Deleting old release & tag: $tag"
+            gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag || true
+          done
+
+      - name: Publish Latest Release APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
           name: "Ampere Pulse ${{ env.RELEASE_TAG }}"
+          body: |
+            ### Ampere Pulse ${{ env.RELEASE_TAG }} (Build ${{ env.VERSION_CODE }})
+            - تحديث تلقائي متوافق للتثبيت المباشر فوق النسخة السابقة بدون إلغاء التثبيت.
+            - ملف APK: `${{ env.APK_FILENAME }}`
           draft: false
           prerelease: false
-          generate_release_notes: true
           make_latest: true
-          files: app/build/outputs/apk/release/app-release.apk
+          files: app/build/outputs/apk/release/${{ env.APK_FILENAME }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Clean Up Old GitHub Actions Workflow Runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OLD_RUNS=$(gh api "repos/${{ github.repository }}/actions/runs?per_page=100" \
+            -q ".workflow_runs[] | select(.id != ${{ github.run_id }}) | .id")
+          for run_id in $OLD_RUNS; do
+            echo "Deleting old workflow run: $run_id"
+            gh api -X DELETE "repos/${{ github.repository }}/actions/runs/${run_id}" || true
+          done

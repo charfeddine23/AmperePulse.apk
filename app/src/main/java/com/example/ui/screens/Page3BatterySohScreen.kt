@@ -39,7 +39,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,7 +95,7 @@ fun Page3BatterySohScreen(
     telemetry: BatteryTelemetry,
     themeConfig: GlassThemeConfig,
     sohPrediction: BatterySohPrediction,
-    onRecalibrateSoh: () -> Unit
+    onRecalibrateSoh: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -101,9 +105,25 @@ fun Page3BatterySohScreen(
     val textColor = if (isDark) TextWhite else TextCharcoal
     val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
 
-    var isCalibrating by remember { mutableStateOf(false) }
+    var isCalibrating by remember { mutableStateOf(true) }
+
+    // Automatically recalibrate SOH against Room WAL & hardware registers on page entry
+    LaunchedEffect(Unit) {
+        isCalibrating = true
+        onRecalibrateSoh(false)
+        delay(450L)
+        isCalibrating = false
+    }
 
     val statusColor = sohPrediction.cellStatus.color
+    val animatedHealthFraction by animateFloatAsState(
+        targetValue = (sohPrediction.healthPercentage / 100f).coerceIn(0f, 1f),
+        animationSpec = spring(
+            dampingRatio = 0.86f,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "sohGaugeFraction"
+    )
 
     val infiniteTransition = rememberInfiniteTransition(label = "sohPulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -233,9 +253,8 @@ fun Page3BatterySohScreen(
                                 style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
                             )
 
-                            // Active Health Arc (98.4% of 260 degrees)
-                            val healthFraction = (sohPrediction.healthPercentage / 100f).coerceIn(0f, 1f)
-                            val activeSweep = 260f * healthFraction
+                            // Active Health Arc (smooth animated sub-second sweep)
+                            val activeSweep = 260f * animatedHealthFraction
 
                             drawArc(
                                 brush = Brush.sweepGradient(
@@ -273,13 +292,13 @@ fun Page3BatterySohScreen(
                             )
                         }
 
-                        // Gauge Center Texts
+                        // Gauge Center Texts (live sub-second precision)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${sohPrediction.healthPercentage}%",
+                                text = String.format(java.util.Locale.US, "%.2f%%", sohPrediction.healthPercentage),
                                 fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 42.sp,
+                                fontSize = 36.sp,
                                 color = textColor
                             )
                             Text(
@@ -399,7 +418,7 @@ fun Page3BatterySohScreen(
                 SohMetricCard(
                     modifier = Modifier.weight(1f),
                     title = "COULOMBIC RATIO",
-                    value = "${sohPrediction.coulombicEfficiencyPercent}%",
+                    value = String.format(java.util.Locale.US, "%.2f%%", sohPrediction.coulombicEfficiencyPercent),
                     subtext = "Electron Retention Rate",
                     accentColor = TactileGreen,
                     isDark = isDark
@@ -515,9 +534,11 @@ fun Page3BatterySohScreen(
                                 style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
                             )
 
-                            // Current operating point indicator
-                            val curX = w * 0.18f
-                            val curY = h * 0.21f
+                            // Current operating point indicator (responds live to cycle count & health %)
+                            val cycleFraction = (sohPrediction.totalCyclesCompleted / 1000f).coerceIn(0f, 1f)
+                            val healthDropFraction = ((100f - sohPrediction.healthPercentage) / 20f).coerceIn(0f, 1f)
+                            val curX = w * cycleFraction
+                            val curY = h * (0.15f + (0.67f * healthDropFraction))
                             drawCircle(
                                 color = statusColor.copy(alpha = 0.3f),
                                 radius = 8.dp.toPx(),
@@ -551,7 +572,7 @@ fun Page3BatterySohScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // 5. Calibration Action Button
+        // 5. Automatic Live Sub-Second Calibration Status & Optional Manual Trigger
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -563,11 +584,11 @@ fun Page3BatterySohScreen(
                         isCalibrating = true
                         CyberSoundscapeEngine.playDiagnosticSweep()
                         CyberHapticsEngine.triggerTactileTick(context)
-                        delay(1000)
+                        onRecalibrateSoh(true)
+                        delay(450L)
                         isCalibrating = false
                         CyberHapticsEngine.triggerBenchmarkSuccess(context)
                         CyberSoundscapeEngine.playCryoChime()
-                        onRecalibrateSoh()
                     }
                 },
                 modifier = Modifier
@@ -587,10 +608,14 @@ fun Page3BatterySohScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isCalibrating) "SYNCHRONIZING WITH ROOM WAL LOGS..." else "RE-CALIBRATE CELL SOH METRICS",
+                        text = if (isCalibrating) {
+                            "AUTO-CALIBRATING CELL SOH & ROOM WAL..."
+                        } else {
+                            "LIVE AUTO-CALIBRATION ACTIVE • 100ms SYNC"
+                        },
                         fontFamily = OutfitFontFamily,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
                         color = Color.White
                     )
                 }

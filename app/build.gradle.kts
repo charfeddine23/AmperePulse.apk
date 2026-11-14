@@ -16,8 +16,10 @@ android {
     applicationId = "com.aistudio.amperepulse.kzqv"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val propVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull()
+    val propVersionName = project.findProperty("versionName")?.toString()?.takeIf { it.isNotBlank() }
+    versionCode = propVersionCode ?: 1
+    versionName = propVersionName ?: "1.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -28,9 +30,9 @@ android {
     create("release") {
       val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
       storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
+      storePassword = System.getenv("STORE_PASSWORD") ?: "android"
       keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      keyPassword = System.getenv("KEY_PASSWORD") ?: "android"
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -116,6 +118,8 @@ dependencies {
   implementation(libs.androidx.glance)
   implementation(libs.androidx.glance.appwidget)
   implementation(libs.androidx.glance.material3)
+  implementation(libs.play.app.update)
+  implementation(libs.play.app.update.ktx)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.android)

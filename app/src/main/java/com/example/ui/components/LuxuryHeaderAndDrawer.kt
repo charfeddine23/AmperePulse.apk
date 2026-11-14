@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.GlassThemeConfig
 import com.example.data.TemperatureUnit
+import com.example.data.update.InAppUpdateUiState
 import com.example.ui.theme.OutfitFontFamily
 import com.example.ui.theme.PlusJakartaSansFontFamily
 import com.example.ui.theme.TactileCoralRed
@@ -320,7 +321,10 @@ fun LuxurySettingsDrawer(
     onClose: () -> Unit,
     themeConfig: GlassThemeConfig,
     onConfigChange: (GlassThemeConfig) -> Unit,
-    onOpenSkinVault: () -> Unit = {}
+    onOpenSkinVault: () -> Unit = {},
+    updateUiState: InAppUpdateUiState = InAppUpdateUiState(),
+    onCheckUpdates: () -> Unit = {},
+    onOpenUpdateDialog: () -> Unit = {}
 ) {
     if (isOpen) {
         BackHandler { onClose() }
@@ -481,12 +485,24 @@ fun LuxurySettingsDrawer(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // 90Hz Motion Acceleration Toggle
+                    // 120Hz / 120 FPS Ultra Motion Acceleration Toggle
                     DrawerToggleRow(
-                        title = "90Hz / 90 FPS Motion Lock",
-                        subtitle = "Hardware-accelerated graphicsLayer render pipeline",
-                        checked = themeConfig.target90FpsMode,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(target90FpsMode = it)) },
+                        title = "120Hz / 120 FPS Ultra Fluidity Lock",
+                        subtitle = "Hardware-accelerated 120 FPS ProMotion render pipeline with ultra-low latency",
+                        checked = themeConfig.target120FpsMode,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(target120FpsMode = it)) },
+                        accentColor = accentColor,
+                        textColor = textColor
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Liquid Droplet Visibility Toggle (إخفاء القطرة والاكتفاء بالسحب)
+                    DrawerToggleRow(
+                        title = "Apple Liquid Glass Droplet (إظهار القطرة)",
+                        subtitle = "تفعيل أو إخفاء قطرة الزجاج السائل في الشريط السفلي والاكتفاء بالسحب والتنقل المباشر",
+                        checked = themeConfig.showLiquidDroplet,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(showLiquidDroplet = it)) },
                         accentColor = accentColor,
                         textColor = textColor
                     )
@@ -720,6 +736,92 @@ fun LuxurySettingsDrawer(
                         accentColor = accentColor,
                         textColor = textColor
                     )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    DrawerToggleRow(
+                        title = "التحديث التلقائي من داخل التطبيق",
+                        subtitle = "فحص التحديثات تلقائياً من GitHub Releases (Ampere)",
+                        checked = themeConfig.autoUpdateEnabled,
+                        onCheckedChange = { onConfigChange(themeConfig.copy(autoUpdateEnabled = it)) },
+                        accentColor = accentColor,
+                        textColor = textColor
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Compact Auto-Update Card inside Settings Drawer
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF1F5F9))
+                            .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                            .padding(14.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "حالة التحديث التلقائي",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                color = textColor
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = updateUiState.lastCheckSummary,
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 10.5.sp,
+                                color = TextSlate
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(accentColor)
+                                        .clickable {
+                                            onCheckUpdates()
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = if (updateUiState.isChecking) "جاري الفحص..." else "فحص التحديثات",
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = Color.White
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
+                                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            onClose()
+                                            onOpenUpdateDialog()
+                                        }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "نافذة التحديث",
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = accentColor
+                                    )
+                                }
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(20.dp))
 

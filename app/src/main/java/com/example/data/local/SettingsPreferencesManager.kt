@@ -65,8 +65,10 @@ class SettingsPreferencesManager(context: Context) {
             alertOnHighTemp = alertOnHighTemp,
             highTempThresholdC = highTempThreshold,
             hapticFeedbackEnabled = hapticEnabled,
-            target90FpsMode = target90Fps,
+            target120FpsMode = prefs.getBoolean(KEY_TARGET_120FPS, true),
             showFpsOverlay = showFpsOverlay,
+            showLiquidDroplet = prefs.getBoolean(KEY_SHOW_LIQUID_DROPLET, true),
+            autoUpdateEnabled = prefs.getBoolean(KEY_AUTO_UPDATE_ENABLED, true),
             currentMultiplier = prefs.getFloat(KEY_CURRENT_MULTIPLIER, 1.0f),
             currentZeroOffsetMa = prefs.getFloat(KEY_CURRENT_ZERO_OFFSET, 0.0f)
         )
@@ -93,8 +95,11 @@ class SettingsPreferencesManager(context: Context) {
             putBoolean(KEY_ALERT_HIGH_TEMP, config.alertOnHighTemp)
             putFloat(KEY_HIGH_TEMP_THRESHOLD, config.highTempThresholdC)
             putBoolean(KEY_HAPTIC_ENABLED, config.hapticFeedbackEnabled)
-            putBoolean(KEY_TARGET_90FPS, config.target90FpsMode)
+            putBoolean(KEY_TARGET_90FPS, config.target120FpsMode)
+            putBoolean(KEY_TARGET_120FPS, config.target120FpsMode)
             putBoolean(KEY_SHOW_FPS, config.showFpsOverlay)
+            putBoolean(KEY_SHOW_LIQUID_DROPLET, config.showLiquidDroplet)
+            putBoolean(KEY_AUTO_UPDATE_ENABLED, config.autoUpdateEnabled)
             putFloat(KEY_CURRENT_MULTIPLIER, config.currentMultiplier)
             putFloat(KEY_CURRENT_ZERO_OFFSET, config.currentZeroOffsetMa)
             apply()
@@ -119,7 +124,10 @@ class SettingsPreferencesManager(context: Context) {
         private const val KEY_HIGH_TEMP_THRESHOLD = "high_temp_threshold"
         private const val KEY_HAPTIC_ENABLED = "haptic_enabled"
         private const val KEY_TARGET_90FPS = "target_90fps"
+        private const val KEY_TARGET_120FPS = "target_120fps"
         private const val KEY_SHOW_FPS = "show_fps"
+        private const val KEY_SHOW_LIQUID_DROPLET = "show_liquid_droplet"
+        private const val KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled"
         private const val KEY_CURRENT_MULTIPLIER = "current_multiplier"
         private const val KEY_CURRENT_ZERO_OFFSET = "current_zero_offset"
     }

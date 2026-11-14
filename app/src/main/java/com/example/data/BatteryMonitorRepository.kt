@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.Build
 import android.os.PowerManager
 import androidx.compose.ui.graphics.Color
 import com.example.data.telemetry.CurrentCalibrationEngine
@@ -16,8 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.random.Random
 
 class BatteryMonitorRepository(
     private val context: Context,
@@ -79,6 +80,16 @@ class BatteryMonitorRepository(
     private var simulatedTempDelta = 0.0f
     private var simTick = 0L
 
+    @Volatile
+    private var isAppInForeground: Boolean = true
+
+    @Volatile
+    private var isSohPageActive: Boolean = false
+
+    @Volatile
+    private var cachedWalLogCount: Int = 0
+    private var lastWalSyncTimeMs: Long = 0L
+
     private val _hourlyStats = MutableStateFlow<List<com.example.data.local.HourlyBatteryStatEntity>>(emptyList())
     val hourlyStats: StateFlow<List<com.example.data.local.HourlyBatteryStatEntity>> = _hourlyStats.asStateFlow()
 
@@ -87,7 +98,36 @@ class BatteryMonitorRepository(
         initSessionLogsSeed()
         initTechCrewSeed()
         initHourlyStatsFromDatabase()
+        refreshWalLogCountAsync()
         startPolling()
+    }
+
+    fun setAppInForeground(inForeground: Boolean) {
+        isAppInForeground = inForeground
+    }
+
+    fun setSohPageActive(active: Boolean) {
+        isSohPageActive = active
+        if (active) {
+            refreshWalLogCountAsync()
+            val t = _telemetry.value
+            computeLiveSohPrediction(
+                telemetry = t,
+                chargeCounterUah = t.chargeCounterUah,
+                hwCycleCount = t.cycleCount,
+                hasHwChargeCounter = false
+            )
+        }
+    }
+
+    private fun refreshWalLogCountAsync() {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val db = com.example.data.local.AmpereDatabase.getInstance(context)
+                cachedWalLogCount = db.telemetryLogDao().getLogCount()
+                lastWalSyncTimeMs = System.currentTimeMillis()
+            } catch (_: Exception) {}
+        }
     }
 
     private fun initTechCrewSeed() {
@@ -188,9 +228,14 @@ class BatteryMonitorRepository(
     private fun startPolling() {
         scope.launch(Dispatchers.Default) {
             while (isActive) {
-                if (subTick % 10 == 0 || cachedBatteryStatus == null) {
+                val activeForeground = isAppInForeground
+                if (subTick % 10 == 0 || cachedBatteryStatus == null || isSohPageActive) {
                     val ifilter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
                     cachedBatteryStatus = context.registerReceiver(null, ifilter)
+                }
+
+                if (isSohPageActive && (System.currentTimeMillis() - lastWalSyncTimeMs >= 5_000L)) {
+                    refreshWalLogCountAsync()
                 }
 
                 readBatteryState(cachedBatteryStatus)
@@ -201,7 +246,7 @@ class BatteryMonitorRepository(
                     updateCrewCooldowns()
                 }
 
-                delay(100L) // Sub-second 100ms streaming updates (10 updates per second)
+                delay(if (activeForeground) 100L else 5_000L)
             }
         }
     }
@@ -319,6 +364,25 @@ class BatteryMonitorRepository(
             (remainingPercent * 11.5f).toInt().coerceAtLeast(15)
         }
 
+        val rawChargeCounter = try {
+            batteryManager?.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER) ?: -1L
+        } catch (_: Exception) {
+            -1L
+        }
+        val hasHwChargeCounter = rawChargeCounter > 0L
+        val effectiveChargeCounterUah = if (hasHwChargeCounter) {
+            rawChargeCounter
+        } else {
+            (percent.coerceIn(0, 100) / 100f * 5000f * 1000f).toLong()
+        }
+
+        val hwCycleCount = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            batteryStatus?.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1) ?: -1
+        } else {
+            -1
+        }
+        val resolvedCycleCount = if (hwCycleCount >= 0) hwCycleCount else 142 + (cachedWalLogCount / 500)
+
         val telemetry = BatteryTelemetry(
             percentage = percent.coerceIn(0, 100),
             status = status,
@@ -330,7 +394,8 @@ class BatteryMonitorRepository(
             temperatureC = (temperatureC * 10).toInt() / 10f,
             technology = "Li-poly (Solid Matrix)",
             capacityMah = 5000,
-            cycleCount = 142,
+            chargeCounterUah = effectiveChargeCounterUah,
+            cycleCount = resolvedCycleCount,
             estimatedMinutesRemaining = estimatedMin,
             isFastCharging = abs(currentMa) > 1800,
             dischargeRatePerHour = 4.2f,
@@ -341,18 +406,30 @@ class BatteryMonitorRepository(
         _telemetry.value = telemetry
         appendHistoryPoint(telemetry)
 
-        // Update Liquid Glass Home Widget with live telemetry
-        scope.launch {
-            try {
-                com.example.widget.WidgetTelemetryUpdater.update(
-                    context = context,
-                    pct = telemetry.percentage,
-                    tempC = telemetry.temperatureC,
-                    voltageMv = telemetry.voltageMv,
-                    currentMa = telemetry.currentMa,
-                    stateName = telemetry.livingState.name
-                )
-            } catch (_: Exception) {}
+        // Sub-second live Cell SOH telemetry calculation (every 100ms on Cell SOH screen, or every 1s elsewhere)
+        if (isSohPageActive || subTick % 10 == 0) {
+            computeLiveSohPrediction(
+                telemetry = telemetry,
+                chargeCounterUah = effectiveChargeCounterUah,
+                hwCycleCount = resolvedCycleCount,
+                hasHwChargeCounter = hasHwChargeCounter
+            )
+        }
+
+        // Throttled Liquid Glass Home Widget sync (every ~3s or on living-state transition)
+        if (subTick % 30 == 0 || previousLivingState != telemetry.livingState) {
+            scope.launch {
+                try {
+                    com.example.widget.WidgetTelemetryUpdater.update(
+                        context = context,
+                        pct = telemetry.percentage,
+                        tempC = telemetry.temperatureC,
+                        voltageMv = telemetry.voltageMv,
+                        currentMa = telemetry.currentMa,
+                        stateName = telemetry.livingState.name
+                    )
+                } catch (_: Exception) {}
+            }
         }
 
         // Trigger Cable DNA and Audio/Haptic cues on Charger Connect / Disconnect
@@ -361,8 +438,10 @@ class BatteryMonitorRepository(
             previousIsCharging = isNowCharging
             if (isNowCharging) {
                 runCableDiagnosticSweep()
-                com.example.audio.CyberSoundscapeEngine.playDiagnosticSweep()
-                com.example.audio.CyberHapticsEngine.triggerElectricSpark(context)
+                if (isAppInForeground) {
+                    com.example.audio.CyberSoundscapeEngine.playDiagnosticSweep()
+                    com.example.audio.CyberHapticsEngine.triggerElectricSpark(context)
+                }
             } else {
                 // When unplugged, reset cable metrics cleanly to 0
                 _cableResult.value = CableDiagnosticResult(
@@ -384,11 +463,11 @@ class BatteryMonitorRepository(
             updateContinuousCableMetrics(telemetry)
         }
 
-        // Trigger Audio/Haptic cues on Living State Transition
+        // Trigger Audio/Haptic cues on Living State Transition (strictly in foreground)
         if (previousLivingState != telemetry.livingState) {
             val oldState = previousLivingState
             previousLivingState = telemetry.livingState
-            if (oldState != null) {
+            if (oldState != null && isAppInForeground) {
                 when (telemetry.livingState) {
                     LivingBatteryState.OVERDRIVE_HEATING -> {
                         com.example.audio.CyberHapticsEngine.triggerThermalWarning(context)
@@ -774,30 +853,93 @@ class BatteryMonitorRepository(
         )
     }
 
-    fun recalibrateSohPrediction() {
+    private fun computeLiveSohPrediction(
+        telemetry: BatteryTelemetry,
+        chargeCounterUah: Long,
+        hwCycleCount: Int,
+        hasHwChargeCounter: Boolean
+    ) {
+        val logCount = cachedWalLogCount
+        val baseHealth = (98.4f - (logCount * 0.001f) - ((hwCycleCount - 142).coerceAtLeast(0) * 0.015f))
+            .coerceIn(72f, 100f)
+
+        val blendedHealth = if (hasHwChargeCounter && telemetry.percentage in 15..100) {
+            val observedFullMah = ((chargeCounterUah / 1000f) / (telemetry.percentage / 100f)).coerceIn(3200f, 5400f)
+            val hwHealthPct = (observedFullMah / 5000f) * 100f
+            (0.35f * hwHealthPct) + (0.65f * baseHealth)
+        } else {
+            baseHealth
+        }
+
+        // Sub-second electrochemical voltage & load polarization compensation
+        val loadStressDelta = -(abs(telemetry.currentMa) / 1000f) * 0.08f +
+            ((telemetry.voltageMv - 4150) / 1000f) * 0.15f
+        val liveHealthPct = ((blendedHealth + loadStressDelta).coerceIn(70f, 100f) * 100f).roundToInt() / 100f
+
+        val effectiveCapacityMah = (5000f * (liveHealthPct / 100f)).roundToInt()
+
+        // Live ESR Impedance (mΩ) responding to load current, temperature & terminal voltage sag
+        val baseEsr = 44f + (hwCycleCount * 0.03f)
+        val loadPolarization = abs(telemetry.currentMa) / 260f
+        val thermalPenalty = (30f - telemetry.temperatureC).coerceAtLeast(0f) * 0.4f +
+            (telemetry.temperatureC - 38f).coerceAtLeast(0f) * 0.6f
+        val sagComponent = (4200 - telemetry.voltageMv).coerceAtLeast(0) / 75f
+        val liveEsrMilliOhms = (baseEsr + loadPolarization + thermalPenalty + sagComponent)
+            .roundToInt()
+            .coerceIn(32, 160)
+
+        // Instantaneous Coulombic Efficiency (%) responding to thermal & C-rate stress
+        val rawCoulombic = (99.55f -
+            ((telemetry.temperatureC - 30f).coerceAtLeast(0f) * 0.09f) -
+            (abs(telemetry.currentMa) / 12000f))
+            .coerceIn(92.0f, 99.95f)
+        val liveCoulombic = (rawCoulombic * 100f).roundToInt() / 100f
+
+        val remainingCycles = (1000 - hwCycleCount).coerceAtLeast(50)
+        val lifespanDays = ((remainingCycles * 0.98f) - (logCount / 300)).roundToInt().coerceAtLeast(180)
+        val cellStatus = when {
+            liveHealthPct >= 95f -> CellHealthStatus.PRISTINE
+            liveHealthPct >= 88f -> CellHealthStatus.OPTIMAL
+            liveHealthPct >= 80f -> CellHealthStatus.MODERATE
+            else -> CellHealthStatus.CRITICAL
+        }
+
+        _sohPrediction.value = _sohPrediction.value.copy(
+            healthPercentage = liveHealthPct,
+            estimatedCurrentCapacityMah = effectiveCapacityMah,
+            totalCyclesCompleted = hwCycleCount,
+            estimatedRemainingCycles = remainingCycles,
+            estimatedLifespanDays = lifespanDays,
+            coulombicEfficiencyPercent = liveCoulombic,
+            internalResistanceEstimateMilliOhms = liveEsrMilliOhms,
+            cellStatus = cellStatus
+        )
+    }
+
+    fun recalibrateSohPrediction(addLog: Boolean = true) {
         scope.launch(Dispatchers.IO) {
             try {
                 val db = com.example.data.local.AmpereDatabase.getInstance(context)
-                val logCount = db.telemetryLogDao().getLogCount()
-                val baseHealth = 98.4f
-                val calculatedHealth = (baseHealth - (logCount * 0.001f)).coerceIn(80f, 100f)
-                val healthFormatted = (calculatedHealth * 10).toInt() / 10f
+                cachedWalLogCount = db.telemetryLogDao().getLogCount()
+                lastWalSyncTimeMs = System.currentTimeMillis()
 
-                _sohPrediction.value = _sohPrediction.value.copy(
-                    healthPercentage = healthFormatted,
-                    estimatedCurrentCapacityMah = (5000 * (healthFormatted / 100f)).toInt(),
-                    totalCyclesCompleted = 142 + (logCount / 500),
-                    estimatedRemainingCycles = 858 - (logCount / 500),
-                    estimatedLifespanDays = (842 - (logCount / 300)).coerceAtLeast(365),
-                    coulombicEfficiencyPercent = 99.4f
+                val t = _telemetry.value
+                computeLiveSohPrediction(
+                    telemetry = t,
+                    chargeCounterUah = t.chargeCounterUah,
+                    hwCycleCount = t.cycleCount,
+                    hasHwChargeCounter = false
                 )
 
-                addManualSessionLog(
-                    title = "Cell SOH Recalibrated",
-                    desc = "Room WAL database synchronized ($logCount records). State of Health: $healthFormatted%, Est. Lifespan: ${_sohPrediction.value.estimatedLifespanDays} Days.",
-                    statTag = "SOH $healthFormatted%",
-                    type = "check"
-                )
+                if (addLog) {
+                    val latest = _sohPrediction.value
+                    addManualSessionLog(
+                        title = "Cell SOH Auto-Calibrated",
+                        desc = "Room WAL synchronized (${cachedWalLogCount} records). Health: ${latest.healthPercentage}%, ESR: ${latest.internalResistanceEstimateMilliOhms}mΩ.",
+                        statTag = "SOH ${latest.healthPercentage}%",
+                        type = "check"
+                    )
+                }
             } catch (_: Exception) {}
         }
     }

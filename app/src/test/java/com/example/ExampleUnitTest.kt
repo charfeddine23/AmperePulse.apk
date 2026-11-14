@@ -112,7 +112,9 @@ class ExampleUnitTest {
         assertFalse(config.isDarkMode) // Defaults to Light Neumorphism
         assertEquals("Royal Blue (#2962FF)", config.accentName)
         assertTrue(config.glowIntensity in 0.3f..1.0f)
+        assertTrue(config.target120FpsMode)
         assertTrue(config.target90FpsMode)
+        assertTrue(config.showLiquidDroplet)
         assertEquals(1.0f, config.currentMultiplier, 0.001f)
         assertEquals(0.0f, config.currentZeroOffsetMa, 0.001f)
 
@@ -153,6 +155,17 @@ class ExampleUnitTest {
         val status = engine.getTelemetryEngineStatus()
         assertEquals(1.0f, status.multiplier, 0.001f)
         assertEquals(-20.0f, status.zeroOffsetMa, 0.01f)
+    }
+
+    @Test
+    fun testAutoUpdateVersionComparison() {
+        val config = GlassThemeConfig()
+        assertTrue(config.autoUpdateEnabled)
+
+        assertTrue(com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.0.1", "1.0.0") > 0)
+        assertTrue(com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.1.0", "1.0.99") > 0)
+        assertEquals(0, com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.0.5", "1.0.5"))
+        assertTrue(com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.0.4", "1.0.5") < 0)
     }
 }
 
