@@ -88,6 +88,7 @@ jobs:
           KEYSTORE_PATH: ${{ env.KEYSTORE_PATH }}
           STORE_PASSWORD: ${{ env.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ env.KEY_PASSWORD }}
+          GRADLE_OPTS: "-Djava.awt.headless=true"
         run: |
           ./gradlew assembleRelease \
             -PversionCode="${{ env.VERSION_CODE }}" \
