@@ -10,10 +10,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
@@ -29,13 +32,21 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import com.example.audio.CyberHapticsEngine
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlin.math.abs
 import com.example.ui.components.CyberSkinVaultDialog
 import com.example.ui.components.FloatingGlassNavBar
 import com.example.ui.components.InAppUpdateDialog
 import com.example.ui.components.LuxurySettingsDrawer
 import com.example.ui.components.LuxuryTopBar
 import com.example.ui.components.NavigationTab
+import com.example.ui.components.PremiumRedeemDialog
 import com.example.ui.components.thermalLiquidGlassBackground
 import com.example.ui.screens.Page1LivingBatteryScreen
 import com.example.ui.screens.Page3BatterySohScreen
@@ -66,6 +77,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
     val themeConfig by viewModel.themeConfig.collectAsState()
     val isSettingsOpen by viewModel.isSettingsMenuOpen.collectAsState()
     val isSkinVaultOpen by viewModel.isSkinVaultOpen.collectAsState()
+    val isRedeemDialogOpen by viewModel.isRedeemDialogOpen.collectAsState()
     val isAutoSensorMode by viewModel.isAutoSensorMode.collectAsState()
     val userAccount by viewModel.userAccount.collectAsState()
     val updateUiState by viewModel.updateUiState.collectAsState()
@@ -165,15 +177,67 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                     themeConfig = themeConfig,
                     onToggleDarkMode = {
                         viewModel.updateThemeConfig(themeConfig.copy(isDarkMode = !themeConfig.isDarkMode))
-                    }
+                    },
+                    onOpenRedeemDialog = { viewModel.toggleRedeemDialog(true) }
                 )
 
                 // 5-Page Content with High-Performance Spring Transitions
+                // Right-half swipe-left sensor (excludes bottom FloatingGlassNavBar & nav insets cleanly)
+                val density = LocalDensity.current
+                val navBarsBottomPx = WindowInsets.navigationBars.getBottom(density).toFloat()
+                val bottomBannerExclusionPx = with(density) { 44.dp.toPx() } + navBarsBottomPx
+                val swipeTriggerPx = with(density) { 30.dp.toPx() }
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                         .padding(bottom = 74.dp)
+                        .pointerInput(isSettingsOpen, bottomBannerExclusionPx) {
+                            if (isSettingsOpen) return@pointerInput
+                            val touchSlop = viewConfiguration.touchSlop
+                            coroutineScope {
+                                while (isActive) {
+                                    awaitPointerEventScope {
+                                        val down = awaitFirstDown(
+                                            requireUnconsumed = false,
+                                            pass = PointerEventPass.Main
+                                        )
+                                        // Only sense in the right half of the screen & avoid bottom banner buffer
+                                        val inRightHalf = down.position.x >= size.width * 0.5f
+                                        val aboveBottomBanner = down.position.y <= (size.height - bottomBannerExclusionPx)
+                                        if (!inRightHalf || !aboveBottomBanner) {
+                                            return@awaitPointerEventScope
+                                        }
+
+                                        val startX = down.position.x
+                                        val startY = down.position.y
+
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Main)
+                                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                            if (!change.pressed || change.isConsumed) break
+
+                                            val totalDx = change.position.x - startX
+                                            val totalDy = change.position.y - startY
+
+                                            // Yield cleanly if user is scrolling vertically
+                                            if (abs(totalDy) > touchSlop && abs(totalDy) >= abs(totalDx)) {
+                                                break
+                                            }
+
+                                            // Open Settings drawer on deliberate right-to-left swipe
+                                            if (totalDx < -swipeTriggerPx && abs(totalDx) > abs(totalDy) * 1.35f) {
+                                                change.consume()
+                                                CyberHapticsEngine.triggerTactileTick(hostContext)
+                                                viewModel.toggleSettingsMenu(true)
+                                                break
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                 ) {
                     AnimatedContent(
                             targetState = selectedTab,
@@ -242,6 +306,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                                     themeConfig = themeConfig,
                                     userAccount = userAccount,
                                     onUpdateOwnerName = { viewModel.updateOwnerName(it) },
+                                    onOpenRedeemDialog = { viewModel.toggleRedeemDialog(true) },
                                     onAddVitalLog = { title, desc, tag, type ->
                                         viewModel.addManualLog(title, desc, tag, type)
                                     }
@@ -268,6 +333,7 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 themeConfig = themeConfig,
                 onConfigChange = { viewModel.updateThemeConfig(it) },
                 onOpenSkinVault = { viewModel.toggleSkinVault(true) },
+                onOpenRedeemDialog = { viewModel.toggleRedeemDialog(true) },
                 updateUiState = updateUiState,
                 onCheckUpdates = {
                     viewModel.checkForAppUpdates(
@@ -288,6 +354,14 @@ fun AmperePulseApp(viewModel: AmperePulseViewModel) {
                 onDismiss = { viewModel.dismissUpdateDialog() },
                 onUpdateClick = { viewModel.triggerAppUpdate(hostContext) },
                 onCancelDownload = { viewModel.cancelAppUpdateDownload() }
+            )
+
+            // Premium Redeem Code Activation Dialog
+            PremiumRedeemDialog(
+                isOpen = isRedeemDialogOpen,
+                themeConfig = themeConfig,
+                onDismiss = { viewModel.toggleRedeemDialog(false) },
+                onRedeemCode = { code -> viewModel.redeemPremiumCode(code) }
             )
 
             // Cyber Skin (Liquid Glass Vault) Modal Dialog - متجر الأقنعة والثيمات السيبرانية

@@ -23,11 +23,17 @@ class SettingsPreferencesManager(context: Context) {
         val activeSkinId = prefs.getString(KEY_ACTIVE_SKIN_ID, "obsidian_cyber") ?: "obsidian_cyber"
         val customAccentHex = if (prefs.contains(KEY_CUSTOM_ACCENT_HEX)) prefs.getLong(KEY_CUSTOM_ACCENT_HEX, 0L) else null
         
-        val appTierString = prefs.getString(KEY_APP_TIER, AppTier.PREMIUM.name) ?: AppTier.PREMIUM.name
-        val appTier = try {
+        val isPremiumUnlocked = prefs.getBoolean(KEY_IS_PREMIUM_UNLOCKED, false)
+        val appTierString = prefs.getString(KEY_APP_TIER, AppTier.FREE.name) ?: AppTier.FREE.name
+        val parsedTier = try {
             AppTier.valueOf(appTierString)
         } catch (_: Exception) {
-            AppTier.PREMIUM
+            AppTier.FREE
+        }
+        val appTier = if (parsedTier == AppTier.PREMIUM && !isPremiumUnlocked) {
+            AppTier.FREE
+        } else {
+            parsedTier
         }
 
         val glassBlurAmount = prefs.getFloat(KEY_GLASS_BLUR, 0.85f)
@@ -55,6 +61,7 @@ class SettingsPreferencesManager(context: Context) {
             activeSkinId = activeSkinId,
             customAccentHex = customAccentHex,
             appTier = appTier,
+            isPremiumUnlocked = isPremiumUnlocked,
             glassBlurAmount = glassBlurAmount,
             ambientLiquidWaves = ambientLiquidWaves,
             temperatureUnit = temperatureUnit,
@@ -85,7 +92,13 @@ class SettingsPreferencesManager(context: Context) {
             } else {
                 remove(KEY_CUSTOM_ACCENT_HEX)
             }
-            putString(KEY_APP_TIER, config.appTier.name)
+            val safeTier = if (config.appTier == AppTier.PREMIUM && !config.isPremiumUnlocked) {
+                AppTier.FREE
+            } else {
+                config.appTier
+            }
+            putString(KEY_APP_TIER, safeTier.name)
+            putBoolean(KEY_IS_PREMIUM_UNLOCKED, config.isPremiumUnlocked)
             putFloat(KEY_GLASS_BLUR, config.glassBlurAmount)
             putBoolean(KEY_AMBIENT_WAVES, config.ambientLiquidWaves)
             putString(KEY_TEMP_UNIT, config.temperatureUnit.name)
@@ -114,6 +127,7 @@ class SettingsPreferencesManager(context: Context) {
         private const val KEY_ACTIVE_SKIN_ID = "active_skin_id"
         private const val KEY_CUSTOM_ACCENT_HEX = "custom_accent_hex"
         private const val KEY_APP_TIER = "app_tier"
+        private const val KEY_IS_PREMIUM_UNLOCKED = "is_premium_unlocked"
         private const val KEY_GLASS_BLUR = "glass_blur"
         private const val KEY_AMBIENT_WAVES = "ambient_waves"
         private const val KEY_TEMP_UNIT = "temp_unit"

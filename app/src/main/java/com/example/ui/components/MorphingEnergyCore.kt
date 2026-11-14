@@ -159,8 +159,8 @@ fun MorphingEnergyCore(
 
             // 1. Dual Soft Neumorphic Outer Base Bed
             val shadowOffset = 5.dp.toPx()
-            val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
-            val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0xE6FFFFFF)
+            val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x407589A2)
+            val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0x7AF2F5FA)
 
             drawCircle(
                 color = shadowColor,
@@ -174,13 +174,12 @@ fun MorphingEnergyCore(
             )
 
             // Tactile disc plate
-            val discColor = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = if (isDarkMode) {
                         listOf(Color(0xFF243348), Color(0xFF1E293B))
                     } else {
-                        listOf(Color(0xFFFFFFFF), Color(0xFFF8FAFD), Color(0xFFEFF3F8))
+                        listOf(Color(0xFFECF1F7), Color(0xFFE5EBF2), Color(0xFFD9E1EB))
                     },
                     center = center,
                     radius = baseRadius * 0.94f
@@ -312,7 +311,7 @@ private fun DrawScope.drawBiologicalBreathingSemicircles(
     isOverload: Boolean,
     isDarkMode: Boolean
 ) {
-    val trackBg = if (isDarkMode) Color(0xFF28364B) else Color(0xFFE2E8F0)
+    val trackBg = if (isDarkMode) Color(0xFF28364B) else Color(0xFFCFD9E6)
     val overloadRed = Color(0xFFFF3D00)
     val effectiveColor = if (isOverload) overloadRed else accentColor
 

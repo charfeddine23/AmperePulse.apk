@@ -108,8 +108,8 @@ fun Modifier.thermalLiquidGlassBackground(
     // Base Neumorphic background color
     val rootBg = if (isDarkMode) NeumorphBgDark else NeumorphBgLight
 
-    // Alpha multipliers calibrated for Light Neumorphism vs Dark Obsidian
-    val alphaScale = if (isDarkMode) 1.0f else 0.70f
+    // Alpha multipliers calibrated for Soft Stone Light Neumorphism vs Dark Obsidian
+    val alphaScale = if (isDarkMode) 1.0f else 0.78f
     val baseGlow = glowIntensity * alphaScale * thermalPulse
 
     val isOverheated = temperatureC >= criticalTempThreshold

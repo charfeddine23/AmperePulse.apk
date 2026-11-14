@@ -88,8 +88,8 @@ fun CyberSkinVaultDialog(
 
     val isDark = themeConfig.isDarkMode
     val textColor = if (isDark) TextWhite else TextCharcoal
-    val subTextColor = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
-    val dialogBg = if (isDark) Color(0xF20F172A) else Color(0xF7FFFFFF)
+    val subTextColor = if (isDark) Color(0xFF94A3B8) else TextSlate
+    val dialogBg = if (isDark) Color(0xF20F172A) else Color(0xF8E1E8F1)
     val activeSkin = CyberSkinVaultCatalog.getSkinById(themeConfig.activeSkinId)
 
     Dialog(
@@ -176,7 +176,7 @@ fun CyberSkinVaultDialog(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0))
+                                .background(if (isDark) Color(0xFF1E293B) else Color(0xFFD2DBE6))
                                 .clickable { onClose() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -293,9 +293,9 @@ private fun CyberSkinItemCard(
     isDarkMode: Boolean,
     onEquip: () -> Unit
 ) {
-    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFECF0F6)
     val textColor = if (isDarkMode) TextWhite else TextCharcoal
-    val subTextColor = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val subTextColor = if (isDarkMode) Color(0xFF94A3B8) else TextSlate
 
     val infiniteTransition = rememberInfiniteTransition(label = "holographicSweep")
     val sweepPhase by infiniteTransition.animateFloat(

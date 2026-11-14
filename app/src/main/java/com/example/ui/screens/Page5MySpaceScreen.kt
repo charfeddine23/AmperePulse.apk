@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Thermostat
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material.icons.filled.Waves
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -125,6 +126,7 @@ fun Page5MySpaceScreen(
     themeConfig: GlassThemeConfig,
     userAccount: UserAccount = UserAccount(),
     onUpdateOwnerName: (String) -> Unit = {},
+    onOpenRedeemDialog: () -> Unit = {},
     onAddVitalLog: (String, String, String, String) -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -253,7 +255,7 @@ fun Page5MySpaceScreen(
                                         Icon(
                                             imageVector = Icons.Default.Verified,
                                             contentDescription = "Verified Account",
-                                            tint = themeConfig.appTier.color,
+                                            tint = themeConfig.appTier.displayColor(isDark),
                                             modifier = Modifier.size(17.dp)
                                         )
                                     }
@@ -261,12 +263,13 @@ fun Page5MySpaceScreen(
                                     Spacer(modifier = Modifier.height(2.dp))
 
                                     // Account Tier Label with dynamic glowing color
+                                    val tierColor = themeConfig.appTier.displayColor(isDark)
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Box(
                                             modifier = Modifier
                                                 .size(6.dp)
                                                 .clip(CircleShape)
-                                                .background(themeConfig.appTier.color)
+                                                .background(tierColor)
                                         )
                                         Spacer(modifier = Modifier.width(5.dp))
                                         Text(
@@ -274,7 +277,7 @@ fun Page5MySpaceScreen(
                                             fontFamily = PlusJakartaSansFontFamily,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 11.sp,
-                                            color = themeConfig.appTier.color
+                                            color = tierColor
                                         )
                                     }
                                 }
@@ -282,22 +285,57 @@ fun Page5MySpaceScreen(
 
                             Spacer(modifier = Modifier.width(10.dp))
 
-                            // Right Section: Quick Edit Button
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(themeConfig.appTier.color.copy(alpha = if (isDark) 0.20f else 0.12f))
-                                    .border(1.dp, themeConfig.appTier.color.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                                    .clickable { showProfileEditDialog = true }
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            // Right Section: Quick Edit & Redeem Actions
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = "تعديل",
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = themeConfig.appTier.color
-                                )
+                                val badgeColor = themeConfig.appTier.displayColor(isDark)
+                                if (!themeConfig.isPremiumUnlocked) {
+                                    val goldTint = if (isDark) Color(0xFFFFD700) else Color(0xFFB77900)
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(goldTint.copy(alpha = if (isDark) 0.18f else 0.12f))
+                                            .border(1.dp, goldTint.copy(alpha = 0.50f), RoundedCornerShape(10.dp))
+                                            .clickable { onOpenRedeemDialog() }
+                                            .padding(horizontal = 9.dp, vertical = 6.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Default.VpnKey,
+                                                contentDescription = null,
+                                                tint = goldTint,
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Redeem",
+                                                fontFamily = OutfitFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 10.5.sp,
+                                                color = goldTint
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(badgeColor.copy(alpha = if (isDark) 0.20f else 0.12f))
+                                        .border(1.dp, badgeColor.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                                        .clickable { showProfileEditDialog = true }
+                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = "تعديل",
+                                        fontFamily = OutfitFontFamily,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp,
+                                        color = badgeColor
+                                    )
+                                }
                             }
                         }
                     }
@@ -593,7 +631,7 @@ private fun CurrentFlowVfxBar(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF))
+            .background(if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE7ECF3))
             .border(1.dp, ambientColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
@@ -643,7 +681,7 @@ private fun CurrentFlowVfxBar(
 
                 // Base track
                 drawLine(
-                    color = if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0),
+                    color = if (isDarkMode) Color(0xFF334155) else Color(0xFFCFD9E6),
                     start = Offset(0f, h * 0.5f),
                     end = Offset(w, h * 0.5f),
                     strokeWidth = 2.dp.toPx()
@@ -850,7 +888,7 @@ fun VitalLogItem(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFF1F5F9))
+                    .background(if (isDarkMode) Color(0xFF334155) else Color(0xFFD2DBE6))
                     .border(1.dp, accentColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
@@ -878,9 +916,9 @@ fun UserProfileEditDialog(
 ) {
     var ownerNameInput by remember { mutableStateOf(userAccount.ownerName) }
 
-    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
+    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE7ECF3)
     val textColor = if (isDarkMode) TextWhite else TextCharcoal
-    val subTextColor = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
+    val subTextColor = if (isDarkMode) Color(0xFF94A3B8) else TextSlate
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1006,8 +1044,8 @@ fun UserProfileEditDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFF8FAFC))
-                        .border(1.dp, if (isDarkMode) Color(0xFF334155) else Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
+                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFD2DBE6))
+                        .border(1.dp, if (isDarkMode) Color(0xFF334155) else Color(0x99BECAD8), RoundedCornerShape(12.dp))
                         .padding(12.dp)
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1300,7 +1338,7 @@ fun ChargingStateNeonProfileAvatar(
                     if (isDarkMode) {
                         Color(0xFF1E293B).copy(alpha = 0.90f)
                     } else {
-                        Color(0xFFFFFFFF).copy(alpha = 0.95f)
+                        Color(0xFFECF0F6).copy(alpha = 0.96f)
                     }
                 )
                 .border(
@@ -1326,7 +1364,7 @@ fun ChargingStateNeonProfileAvatar(
                 .size(17.dp)
                 .clip(CircleShape)
                 .background(
-                    if (isDarkMode) Color(0xFF0F172A) else Color(0xFFFFFFFF)
+                    if (isDarkMode) Color(0xFF0F172A) else Color(0xFFDDE5EF)
                 )
                 .border(
                     1.2.dp,

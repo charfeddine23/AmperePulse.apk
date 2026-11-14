@@ -246,7 +246,7 @@ fun Page3BatterySohScreen(
 
                             // Background Inactive Arc
                             drawArc(
-                                color = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0),
+                                color = if (isDark) Color(0xFF1E293B) else Color(0xFFCFD9E6),
                                 startAngle = 140f,
                                 sweepAngle = 260f,
                                 useCenter = false,
@@ -636,8 +636,8 @@ private fun SohMetricCard(
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
-            .border(1.dp, if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0), RoundedCornerShape(14.dp))
+            .background(if (isDark) Color(0xFF1E293B) else Color(0xFFE7ECF3))
+            .border(1.dp, if (isDark) Color(0xFF334155) else Color(0x99BECAD8), RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Column {
@@ -662,7 +662,7 @@ private fun SohMetricCard(
                 text = subtext,
                 fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 10.sp,
-                color = if (isDark) Color(0xFF94A3B8) else Color(0xFF64748B)
+                color = if (isDark) Color(0xFF94A3B8) else TextSlate
             )
         }
     }

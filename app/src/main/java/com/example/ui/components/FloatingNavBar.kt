@@ -1,12 +1,8 @@
 package com.example.ui.components
 
-import android.content.Context
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,27 +29,26 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.Cable
 import androidx.compose.material.icons.filled.HealthAndSafety
-import androidx.compose.material.icons.filled.QueryStats
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -66,8 +61,10 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.audio.CyberHapticsEngine
@@ -78,8 +75,8 @@ import com.example.ui.theme.TextSlate
 import com.example.ui.theme.TextWhite
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 enum class NavigationTab(val label: String, val arabicLabel: String, val icon: ImageVector, val tag: String) {
     BATTERY("Battery", "البطارية", Icons.Default.Bolt, "nav_battery"),
@@ -91,12 +88,129 @@ enum class NavigationTab(val label: String, val arabicLabel: String, val icon: I
 }
 
 /**
- * Apple Liquid Glass Floating Navigation Bar with Dynamic Drag Droplet Effect.
+ * Real-time coupled two-mass spring-damper physics engine for the Liquid Glass Droplet.
+ * All animated fields are Compose FloatState read exclusively inside Canvas draw scope,
+ * ensuring 120 FPS zero-recomposition GPU rendering.
+ */
+@Stable
+private class LiquidDropletPhysicsState {
+    var headX by mutableFloatStateOf(0f)
+    var tailX by mutableFloatStateOf(0f)
+    var fluidLift by mutableFloatStateOf(0f)
+    var wobble by mutableFloatStateOf(0f)
+
+    var targetHeadX by mutableFloatStateOf(0f)
+    var isInitialized by mutableStateOf(false)
+
+    // Internal simulation velocities (non-state to avoid unnecessary snapshots)
+    private var headVel = 0f
+    private var tailVel = 0f
+    private var liftVel = 0f
+    private var wobbleVel = 0f
+    private var prevHeadVel = 0f
+
+    fun snapAllTo(x: Float) {
+        headX = x
+        tailX = x
+        targetHeadX = x
+        fluidLift = 0f
+        wobble = 0f
+        headVel = 0f
+        tailVel = 0f
+        liftVel = 0f
+        wobbleVel = 0f
+        prevHeadVel = 0f
+        isInitialized = true
+    }
+
+    fun triggerSurfaceRipple(impulse: Float) {
+        wobbleVel += impulse.coerceIn(-4.2f, 4.2f)
+    }
+
+    /**
+     * Advances the coupled fluid physics by [dtSeconds] using 2 RK-like symplectic sub-steps.
+     * Returns true if simulation is still actively moving, false once completely at rest.
+     */
+    fun step(dtSeconds: Float, isDragging: Boolean): Boolean {
+        val dt = dtSeconds.coerceIn(0.001f, 0.025f)
+        val subDt = dt * 0.5f
+
+        val headStiffness = if (isDragging) 1450f else 330f
+        val headDamping = if (isDragging) 2f * 0.90f * sqrt(headStiffness) else 2f * 0.72f * sqrt(headStiffness)
+
+        // Softer viscous spring between headX and tailX creates authentic liquid inertia & tail lag
+        val tailStiffness = if (isDragging) 235f else 210f
+        val tailDamping = if (isDragging) 2f * 0.72f * sqrt(tailStiffness) else 2f * 0.66f * sqrt(tailStiffness)
+
+        val speedFactor = (abs(headVel) / 1400f).coerceIn(0f, 1f)
+        val targetLift = if (isDragging) 1f else (speedFactor * 0.9f).coerceIn(0f, 1f)
+        val liftStiffness = 280f
+        val liftDamping = 2f * 0.80f * sqrt(liftStiffness)
+
+        // Surface tension harmonic oscillation (natural liquid slosh on deceleration)
+        val wobbleStiffness = 240f
+        val wobbleDamping = 2f * 0.44f * sqrt(wobbleStiffness)
+
+        repeat(2) {
+            // 1. Head mass tracks finger or target tab center
+            val headAcc = (targetHeadX - headX) * headStiffness - headVel * headDamping
+            headVel += headAcc * subDt
+            headX += headVel * subDt
+
+            // Feed rapid deceleration into subtle liquid squash-and-stretch ripple
+            val deltaVel = headVel - prevHeadVel
+            if (!isDragging && abs(deltaVel) > 65f) {
+                wobbleVel += (-deltaVel / 18000f).coerceIn(-0.45f, 0.45f)
+            }
+            prevHeadVel = headVel
+
+            // 2. Trailing fluid mass follows headX with viscous lag (naturally stretches & flips)
+            val tailAcc = (headX - tailX) * tailStiffness - tailVel * tailDamping
+            tailVel += tailAcc * subDt
+            tailX += tailVel * subDt
+
+            // 3. Capillary elevation / lift state
+            val liftAcc = (targetLift - fluidLift) * liftStiffness - liftVel * liftDamping
+            liftVel += liftAcc * subDt
+            fluidLift = (fluidLift + liftVel * subDt).coerceIn(0f, 1.15f)
+
+            // 4. Surface tension squash/stretch wobble
+            val wobbleAcc = -wobble * wobbleStiffness - wobbleVel * wobbleDamping
+            wobbleVel += wobbleAcc * subDt
+            wobble = (wobble + wobbleVel * subDt).coerceIn(-0.22f, 0.22f)
+        }
+
+        val isSettled = !isDragging &&
+            abs(targetHeadX - headX) < 0.20f &&
+            abs(headVel) < 1.5f &&
+            abs(headX - tailX) < 0.20f &&
+            abs(tailVel) < 1.5f &&
+            abs(fluidLift) < 0.004f &&
+            abs(liftVel) < 0.01f &&
+            abs(wobble) < 0.002f &&
+            abs(wobbleVel) < 0.01f
+
+        if (isSettled) {
+            headX = targetHeadX
+            tailX = targetHeadX
+            headVel = 0f
+            tailVel = 0f
+            fluidLift = 0f
+            liftVel = 0f
+            wobble = 0f
+            wobbleVel = 0f
+            return false
+        }
+        return true
+    }
+}
+
+/**
+ * Apple Liquid Glass Floating Navigation Bar with Realistic Fluid Droplet Physics.
  *
- * Continuous drag gesture ("من دون نزع يدي"):
- * - Swiping right-to-left: Droplet head moves left with trailing tail extending to the right.
- * - Swiping left-to-right: Droplet head moves right with trailing tail inverting to the left.
- * - Real-time tracking across tabs, haptic ticks on boundary crossing, and spring snap on release.
+ * Uses a continuous two-mass spring-damper simulation (`headX` + viscous `tailX`)
+ * plus volume conservation and surface-tension slosh, synced to native display vsync
+ * at 120 FPS with zero Compose recomposition during motion.
  */
 @Composable
 fun FloatingGlassNavBar(
@@ -109,25 +223,18 @@ fun FloatingGlassNavBar(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val coroutineScope = rememberCoroutineScope()
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
 
-    val barBackground = if (isDarkMode) Color(0xF01E293B) else Color(0xEBFFFFFF)
-    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
-    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x66E2E8F0)
+    val barBackground = if (isDarkMode) Color(0xEC1A2334) else Color(0xECE3E9F2)
+    val shadowColor = if (isDarkMode) Color(0x55000000) else Color(0x3B7589A2)
+    val borderColor = if (isDarkMode) Color(0x38475569) else Color(0x99B8C5D6)
 
-    val maxStretchPx = with(density) { 44.dp.toPx() }
-    val baseStretchPx = with(density) { 14.dp.toPx() }
-    val snapStretchPx = with(density) { 26.dp.toPx() }
-
-    // Droplet physics state
-    val dropletX = remember { Animatable(0f) }
-    val tailStretch = remember { Animatable(0f) }
-    // tailDirection: +1f for tail pointing Right (finger moving Left), -1f for tail pointing Left (finger moving Right)
-    val tailDirection = remember { Animatable(0f) }
+    val maxStretchPx = with(density) { 46.dp.toPx() }
+    val physics = remember { LiquidDropletPhysicsState() }
 
     var isDragging by remember { mutableStateOf(false) }
     var activeHoveredIndex by remember { mutableIntStateOf(selectedTab.ordinal) }
-    var hasInitialized by remember { mutableStateOf(false) }
+    var physicsEpoch by remember { mutableIntStateOf(0) }
 
     Box(
         modifier = modifier
@@ -142,7 +249,6 @@ fun FloatingGlassNavBar(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
-                    // Dual Soft Neumorphic Drop Shadow
                     drawRoundRect(
                         color = shadowColor,
                         topLeft = Offset(0f, 6.dp.toPx()),
@@ -153,7 +259,7 @@ fun FloatingGlassNavBar(
                 .clip(RoundedCornerShape(26.dp))
                 .background(barBackground)
                 .border(
-                    width = 1.2.dp,
+                    width = 1.15.dp,
                     color = borderColor,
                     shape = RoundedCornerShape(26.dp)
                 )
@@ -163,51 +269,63 @@ fun FloatingGlassNavBar(
             val totalTabs = NavigationTab.entries.size
             val tabWidthPx = if (totalTabs > 0) barWidthPx / totalTabs else 1f
 
-            fun tabCenterX(index: Int): Float = (index + 0.5f) * tabWidthPx
-
-            // Initialize droplet position on first layout
-            if (!hasInitialized && barWidthPx > 0f) {
-                LaunchedEffect(barWidthPx) {
-                    val initialCenter = tabCenterX(selectedTab.ordinal)
-                    dropletX.snapTo(initialCenter)
-                    activeHoveredIndex = selectedTab.ordinal
-                    hasInitialized = true
-                }
+            fun tabCenterX(index: Int): Float {
+                val visualIndex = if (isRtl) (totalTabs - 1 - index) else index
+                return (visualIndex + 0.5f) * tabWidthPx
             }
 
-    // External selection sync (when user changes tab outside or taps directly with a single click)
-    LaunchedEffect(selectedTab, hasInitialized) {
-        if (hasInitialized && !isDragging) {
-            val targetX = tabCenterX(selectedTab.ordinal)
-            val currentX = dropletX.value
-            val diff = targetX - currentX
-            activeHoveredIndex = selectedTab.ordinal
+            fun xToTabIndex(x: Float): Int {
+                val visualSlot = (x / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
+                return if (isRtl) (totalTabs - 1 - visualSlot) else visualSlot
+            }
 
-            if (abs(diff) > 2f) {
-                coroutineScope.launch {
-                    // Single tap transition: strictly WITHOUT TAIL (tailStretch = 0f)
-                    // The squircle / rounded square glides smoothly to the selected tab with zero tail formation
-                    launch {
-                        tailStretch.snapTo(0f)
+            // Initialize / resize placement cleanly
+            LaunchedEffect(barWidthPx, isRtl) {
+                if (barWidthPx > 0f) {
+                    val center = tabCenterX(selectedTab.ordinal)
+                    if (!physics.isInitialized) {
+                        physics.snapAllTo(center)
+                        activeHoveredIndex = selectedTab.ordinal
+                    } else if (!isDragging) {
+                        physics.targetHeadX = center
+                        physicsEpoch++
                     }
-                    // Liquid squircle glide with organic spring physics
-                    dropletX.animateTo(
-                        targetValue = targetX,
-                        animationSpec = spring(
-                            dampingRatio = 0.76f,
-                            stiffness = Spring.StiffnessMediumLow
-                        )
-                    )
                 }
             }
-        }
-    }
 
-            // Interactive Continuous Pointer Gesture Handler ("من دون نزع يدي")
+            // Sync external tab taps into physical glide
+            LaunchedEffect(selectedTab) {
+                if (physics.isInitialized && !isDragging) {
+                    activeHoveredIndex = selectedTab.ordinal
+                    val targetX = tabCenterX(selectedTab.ordinal)
+                    if (abs(targetX - physics.targetHeadX) > 1f) {
+                        physics.targetHeadX = targetX
+                        physics.triggerSurfaceRipple(0.85f)
+                        physicsEpoch++
+                    }
+                }
+            }
+
+            // Frame-synced 120 FPS fluid simulation loop (runs ONLY while actively animating or dragging)
+            LaunchedEffect(physicsEpoch, isDragging, barWidthPx) {
+                if (!physics.isInitialized || barWidthPx <= 0f) return@LaunchedEffect
+                var lastNanos = 0L
+                while (isActive) {
+                    var keepRunning = true
+                    withFrameNanos { frameNanos ->
+                        val dt = if (lastNanos == 0L) 0.016f else (frameNanos - lastNanos) / 1_000_000_000f
+                        lastNanos = frameNanos
+                        keepRunning = physics.step(dt, isDragging)
+                    }
+                    if (!keepRunning) break
+                }
+            }
+
+            // Interactive Continuous Pointer Gesture Handler
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(barWidthPx) {
+                    .pointerInput(barWidthPx, isRtl) {
                         coroutineScope {
                             while (isActive) {
                                 awaitPointerEventScope {
@@ -216,142 +334,63 @@ fun FloatingGlassNavBar(
                                         pass = PointerEventPass.Initial
                                     )
                                     isDragging = true
+                                    physicsEpoch++
 
-                                    var lastX = down.position.x
-                                    var lastTime = down.uptimeMillis
                                     val startX = down.position.x
+                                    val initialClampedX = startX.coerceIn(tabWidthPx * 0.32f, barWidthPx - tabWidthPx * 0.32f)
+                                    physics.targetHeadX = initialClampedX
+                                    physics.triggerSurfaceRipple(-1.15f)
 
-                                    // When pressed down:
-                                    // The droplet forms as a pure round liquid lens WITHOUT A TAIL!
-                                    launch {
-                                        tailStretch.snapTo(0f)
-                                    }
-
-                                    val initialIndex = (startX / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
+                                    val initialIndex = xToTabIndex(initialClampedX)
                                     activeHoveredIndex = initialIndex
 
-                                    // Follow finger position directly
-                                    val initialClampedX = startX.coerceIn(tabWidthPx * 0.35f, barWidthPx - tabWidthPx * 0.35f)
-                                    launch {
-                                        dropletX.snapTo(initialClampedX)
-                                    }
-
-                                    var smoothedVelocity = 0f
-
-                                    // Continuous dragging loop without lifting finger
                                     while (true) {
                                         val event = awaitPointerEvent(PointerEventPass.Initial)
                                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                                        if (!change.pressed) {
-                                            // Finger released
-                                            break
-                                        }
+                                        if (!change.pressed) break
 
-                                        val currentTime = change.uptimeMillis
                                         val currentX = change.position.x
-                                        val dt = (currentTime - lastTime).coerceAtLeast(1L)
-                                        val dx = currentX - lastX
+                                        val clampedX = currentX.coerceIn(tabWidthPx * 0.32f, barWidthPx - tabWidthPx * 0.32f)
+                                        physics.targetHeadX = clampedX
 
-                                        lastX = currentX
-                                        lastTime = currentTime
-
-                                        // Calculate instantaneous and smoothed velocity (px/sec)
-                                        val instantVelocity = (dx / dt.toFloat()) * 1000f
-                                        smoothedVelocity = (smoothedVelocity * 0.45f) + (instantVelocity * 0.55f)
-                                        val speed = abs(smoothedVelocity)
-
-                                        // 1:1 true finger tracking - head follows finger position directly
-                                        val clampedX = currentX.coerceIn(tabWidthPx * 0.35f, barWidthPx - tabWidthPx * 0.35f)
-                                        launch {
-                                            dropletX.snapTo(clampedX)
-                                        }
-
-                                        // Dynamic Tail Physics based on finger velocity:
-                                        // When stationary or moving very slowly (< 40 px/s): stretch = 0 (NO TAIL!)
-                                        // As finger moves faster: tail elongates up to maxStretchPx!
-                                        // As finger slows down: tail shortens and retracts!
-                                        val targetStretch = if (speed < 40f) {
-                                            0f
-                                        } else {
-                                            ((speed - 40f) / 1600f * maxStretchPx).coerceIn(0f, maxStretchPx)
-                                        }
-
-                                        // Direction of tail:
-                                        // Moving Left (smoothedVelocity < 0) -> tail points Right (+1f)
-                                        // Moving Right (smoothedVelocity > 0) -> tail points Left (-1f)
-                                        if (abs(smoothedVelocity) > 25f) {
-                                            val dir = if (smoothedVelocity < 0f) 1f else -1f
-                                            launch {
-                                                tailDirection.snapTo(dir)
-                                            }
-                                        }
-
-                                        launch {
-                                            tailStretch.animateTo(
-                                                targetValue = targetStretch,
-                                                animationSpec = tween(
-                                                    durationMillis = if (targetStretch < tailStretch.value) 75 else 35,
-                                                    easing = LinearEasing
-                                                )
-                                            )
-                                        }
-
-                                        // Tab boundary transition
-                                        val hoveredIndex = (clampedX / tabWidthPx).toInt().coerceIn(0, totalTabs - 1)
+                                        val hoveredIndex = xToTabIndex(clampedX)
                                         if (hoveredIndex != activeHoveredIndex) {
                                             activeHoveredIndex = hoveredIndex
                                             CyberHapticsEngine.triggerTactileTick(context)
+                                            physics.triggerSurfaceRipple(0.95f)
                                             onTabSelected(NavigationTab.entries[hoveredIndex])
                                         }
 
                                         change.consume()
                                     }
 
-                                    // Finger up: snap to selected tab
+                                    // Finger released: spring smoothly to final tab center with gentle liquid slosh
                                     isDragging = false
                                     val finalIndex = activeHoveredIndex
                                     val finalTab = NavigationTab.entries[finalIndex]
-                                    val snapTargetX = tabCenterX(finalIndex)
+                                    physics.targetHeadX = tabCenterX(finalIndex)
+                                    physics.triggerSurfaceRipple(1.45f)
+                                    physicsEpoch++
 
                                     CyberHapticsEngine.triggerTactileTick(context)
                                     onTabSelected(finalTab)
-
-                                    // Collapse tail to 0 and spring into tab center
-                                    launch {
-                                        tailStretch.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        )
-                                    }
-                                    launch {
-                                        dropletX.animateTo(
-                                            targetValue = snapTargetX,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioLowBouncy,
-                                                stiffness = Spring.StiffnessMediumLow
-                                            )
-                                        )
-                                    }
                                 }
                             }
                         }
                     }
             ) {
-                // Layer 1: Apple Liquid Glass Droplet Canvas (underneath tabs)
+                // Layer 1: Realistic Fluid Glass Droplet Canvas (draw-only invalidation)
                 if (showLiquidDroplet) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawAppleLiquidGlassDroplet(
-                            currentX = dropletX.value,
+                        drawRealisticLiquidGlassDroplet(
+                            headX = physics.headX,
+                            tailX = physics.tailX,
+                            fluidLift = physics.fluidLift,
+                            wobble = physics.wobble,
                             centerY = size.height / 2f,
-                            stretch = tailStretch.value,
-                            tailDir = tailDirection.value,
-                            isDragging = isDragging,
+                            maxStretchPx = maxStretchPx,
                             isDarkMode = isDarkMode,
                             accentColor = accentColor,
-                            baseWidth = tabWidthPx * 0.88f,
                             baseHeight = 44.dp.toPx().coerceAtMost(size.height - 4.dp.toPx())
                         )
                     }
@@ -403,7 +442,6 @@ fun FloatingGlassNavBar(
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
-                                val isRtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
                                 Text(
                                     text = tab.getLocalizedLabel(isRtl),
                                     fontFamily = OutfitFontFamily,
@@ -425,302 +463,292 @@ fun FloatingGlassNavBar(
 }
 
 /**
- * Draws the luxury Apple Liquid Glass Droplet with dynamic trailing tail,
- * internal glass refraction, specular highlight lens, and ambient glowing aura.
+ * Draws a continuous C¹-smooth Liquid Glass Droplet with real volume preservation,
+ * seamless squircle-to-teardrop morphing (zero discontinuities), internal caustic refraction,
+ * curved specular dome lens, and ambient droplet shadow/glow.
  */
-private fun DrawScope.drawAppleLiquidGlassDroplet(
-    currentX: Float,
+private fun DrawScope.drawRealisticLiquidGlassDroplet(
+    headX: Float,
+    tailX: Float,
+    fluidLift: Float,
+    wobble: Float,
     centerY: Float,
-    stretch: Float,
-    tailDir: Float,
-    isDragging: Boolean,
+    maxStretchPx: Float,
     isDarkMode: Boolean,
     accentColor: Color,
-    baseWidth: Float,
     baseHeight: Float
 ) {
-    if (currentX <= 0f) return
+    if (headX <= 0f) return
 
-    val headRadius = baseHeight * 0.48f
-    val cornerRadius = 18.dp.toPx()
+    val signedLag = (tailX - headX).coerceIn(-maxStretchPx, maxStretchPx)
+    val stretchMag = abs(signedLag)
+    val stretchRatio = (stretchMag / maxStretchPx).coerceIn(0f, 1f)
+    val tailSign = if (signedLag >= 0f) 1f else -1f
 
-    // 1. Ambient Glow Aura Tint
-    val auraRadius = headRadius * 2.3f + stretch * 0.5f
+    val lift = fluidLift.coerceIn(0f, 1f)
+    val squash = wobble.coerceIn(-0.18f, 0.18f)
+
+    // Resting squircle vs raised spherical liquid dimensions
+    val restHalfW = (baseHeight * 0.56f).coerceAtLeast(24.dp.toPx())
+    val restHalfH = (baseHeight * 0.46f).coerceAtLeast(20.dp.toPx())
+    val fluidR = baseHeight * 0.48f * (1f + 0.06f * lift)
+
+    // Volume preservation: elongating horizontally narrows height subtly; landing squash widens vertically
+    val volumeThinning = 1f - 0.17f * stretchRatio
+    val ry = ((restHalfH * (1f - lift)) + (fluidR * lift)) * (volumeThinning + squash).coerceIn(0.68f, 1.24f)
+    val leadRx = ((restHalfW * (1f - lift)) + (fluidR * lift)) * (1f - squash * 0.60f + 0.07f * stretchRatio).coerceIn(0.75f, 1.28f)
+
+    // Dynamic meniscus trailing extension
+    val tailExtension = stretchMag * 1.18f
+    val tailTipRadius = (ry * (1f - 0.56f * stretchRatio)).coerceAtLeast(5.dp.toPx())
+
+    // Unified C¹ Bezier control factor smoothly blending Squircle (0.72) <-> Liquid Dome (0.5523)
+    val kCircle = 0.55228475f
+    val kSquircle = 0.72f
+    val dynamicMorph = maxOf(lift, stretchRatio)
+    val leadK = kSquircle * (1f - dynamicMorph) + kCircle * dynamicMorph
+    val tailK = leadK
+
+    // Key contour anchors
+    val frontApexX = headX - tailSign * leadRx
+    val backOuterX = headX + tailSign * (leadRx + tailExtension)
+    val tailCircleCenterX = backOuterX - tailSign * tailTipRadius
+
+    // 1. Caustic Ambient Floor Shadow & Colored Refraction Halo
+    val auraRadius = ry * 2.25f + tailExtension * 0.42f
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(
-                accentColor.copy(alpha = if (isDarkMode) 0.32f else 0.22f),
-                accentColor.copy(alpha = 0.08f),
+                accentColor.copy(alpha = (if (isDarkMode) 0.30f else 0.20f) + 0.12f * dynamicMorph),
+                accentColor.copy(alpha = 0.07f),
                 Color.Transparent
             ),
-            center = Offset(currentX, centerY),
+            center = Offset(headX, centerY + 2.dp.toPx() * lift),
             radius = auraRadius
         ),
         radius = auraRadius,
-        center = Offset(currentX, centerY)
+        center = Offset(headX, centerY + 2.dp.toPx() * lift)
     )
 
-    // Continuous organic fluid morphing:
-    // Let R be the base radius of the droplet.
-    // When stationary (stretch == 0), the contour is mathematically identical to a circle (or rounded resting pill).
-    // As stretch increases with finger speed, the trailing tail continuously pulls out while preserving fluid volume (waist thinning).
-    val R = headRadius
-    val tailSign = if (tailDir >= 0f) 1f else -1f
+    // 2. Single Unified Continuous Fluid Path (zero shape pops across any speed/state)
+    val dropletPath = Path().apply {
+        moveTo(frontApexX, centerY)
 
-    // Organic stretch ratio [0..1]
-    val stretchRatio = (stretch / with(this) { 44.dp.toPx() }).coerceIn(0f, 1f)
-    val tailLength = stretch * 1.45f
+        // Front-Top Quadrant (Front Apex -> Top Crest)
+        cubicTo(
+            x1 = frontApexX,
+            y1 = centerY - ry * leadK,
+            x2 = headX - tailSign * (leadRx * leadK),
+            y2 = centerY - ry,
+            x3 = headX,
+            y3 = centerY - ry
+        )
 
-    // Fluid volume preservation: minor waist thinning perpendicular to motion
-    val thinning = R * (0.14f * stretchRatio)
-    val Ry = (R - thinning).coerceAtLeast(R * 0.72f)
-
-    // Tail tip thickness continuously tapers from R down to a fluid meniscus tip as stretch increases
-    val minTipRadius = with(this) { 4.5.dp.toPx() }
-    val tailTipRadius = R - (R - minTipRadius) * stretchRatio
-
-    // Resting squircle geometry (مربع مستدير الحواف عند عدم اللمس)
-    // Dimension is approximately 48dp x 44dp with 14dp rounded corners, perfectly framing the active icon & label
-    val squircleHalfWidth = (baseHeight * 0.54f).coerceAtLeast(22.dp.toPx())
-    val squircleHalfHeight = (baseHeight * 0.46f).coerceAtLeast(20.dp.toPx())
-    val squircleCornerRadius = 14.dp.toPx()
-
-    // Smooth transition from squircle to moving droplet
-    val isRestingSquircle = !isDragging && stretch <= 0.8f
-
-    val activePath = Path().apply {
-        if (isRestingSquircle) {
-            // Pristine Apple Liquid Glass Rounded Square (مربع مستدير الحواف)
-            addRoundRect(
-                RoundRect(
-                    rect = Rect(
-                        left = currentX - squircleHalfWidth,
-                        top = centerY - squircleHalfHeight,
-                        right = currentX + squircleHalfWidth,
-                        bottom = centerY + squircleHalfHeight
-                    ),
-                    cornerRadius = CornerRadius(squircleCornerRadius, squircleCornerRadius)
-                )
-            )
-        } else {
-            // Dynamic Viscous Liquid Droplet with realistic fluid physics & meniscus tail
-            val morphFactor = stretchRatio.coerceIn(0f, 1f)
-            val baseLeadRadius = squircleHalfWidth * (1f - morphFactor) + R * morphFactor
-            val leadExt = baseLeadRadius + (thinning * 0.25f)
-            val dynamicLeadingX = currentX - (tailSign * leadExt)
-            val dynamicTailTipX = currentX + (tailSign * (baseLeadRadius + tailLength))
-
-            val kCircle = 0.55228475f
-
-            moveTo(dynamicLeadingX, centerY)
-
-            // Segment 1: Leading apex -> Top crest
+        if (tailExtension < 0.5f) {
+            // Smooth continuous resting-to-lifted superellipse symmetry when lag ~ 0
             cubicTo(
-                x1 = dynamicLeadingX,
-                y1 = centerY - Ry * kCircle,
-                x2 = currentX - tailSign * (R * kCircle),
-                y2 = centerY - Ry,
-                x3 = currentX,
-                y3 = centerY - Ry
-            )
-
-            // Segment 2: Top crest -> Tail tip top
-            val cp1X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
-            val cp1Y = centerY - Ry
-            val cp2X = dynamicTailTipX - tailSign * (tailTipRadius * 1.1f)
-            val cp2Y = centerY - tailTipRadius
-            val tipTopX = dynamicTailTipX
-            val tipTopY = centerY - tailTipRadius
-
-            cubicTo(
-                x1 = cp1X,
-                y1 = cp1Y,
-                x2 = cp2X,
-                y2 = cp2Y,
-                x3 = tipTopX,
-                y3 = tipTopY
-            )
-
-            // Segment 3: Round the tail tip continuously
-            cubicTo(
-                x1 = dynamicTailTipX + tailSign * tailTipRadius * kCircle,
-                y1 = centerY - tailTipRadius,
-                x2 = dynamicTailTipX + tailSign * tailTipRadius * kCircle,
-                y2 = centerY + tailTipRadius,
-                x3 = dynamicTailTipX,
-                y3 = centerY + tailTipRadius
-            )
-
-            // Segment 4: Tail tip bottom -> Bottom crest
-            val cp3X = dynamicTailTipX - tailSign * (tailTipRadius * 1.1f)
-            val cp3Y = centerY + tailTipRadius
-            val cp4X = currentX + tailSign * (R * kCircle * (1f - stretchRatio * 0.6f) + tailLength * 0.25f)
-            val cp4Y = centerY + Ry
-
-            cubicTo(
-                x1 = cp3X,
-                y1 = cp3Y,
-                x2 = cp4X,
-                y2 = cp4Y,
-                x3 = currentX,
-                y3 = centerY + Ry
-            )
-
-            // Segment 5: Bottom crest -> Leading apex
-            cubicTo(
-                x1 = currentX - tailSign * (R * kCircle),
-                y1 = centerY + Ry,
-                x2 = dynamicLeadingX,
-                y2 = centerY + Ry * kCircle,
-                x3 = dynamicLeadingX,
+                x1 = headX + tailSign * (leadRx * tailK),
+                y1 = centerY - ry,
+                x2 = backOuterX,
+                y2 = centerY - ry * tailK,
+                x3 = backOuterX,
                 y3 = centerY
             )
-            close()
+            cubicTo(
+                x1 = backOuterX,
+                y1 = centerY + ry * tailK,
+                x2 = headX + tailSign * (leadRx * tailK),
+                y2 = centerY + ry,
+                x3 = headX,
+                y3 = centerY + ry
+            )
+        } else {
+            // Concave meniscus bridge from Top Crest to Tapered Tail Tip
+            val neckBlend = stretchRatio.coerceIn(0f, 1f)
+            val bridgeCp1X = headX + tailSign * (leadRx * tailK * (1f - neckBlend * 0.45f) + tailExtension * 0.28f)
+            val bridgeCp2X = tailCircleCenterX - tailSign * (tailTipRadius * 0.9f + tailExtension * 0.16f)
+
+            cubicTo(
+                x1 = bridgeCp1X,
+                y1 = centerY - ry,
+                x2 = bridgeCp2X,
+                y2 = centerY - tailTipRadius,
+                x3 = tailCircleCenterX,
+                y3 = centerY - tailTipRadius
+            )
+            // Rounded Meniscus Tail Tip Top -> Apex -> Bottom
+            cubicTo(
+                x1 = tailCircleCenterX + tailSign * (tailTipRadius * kCircle),
+                y1 = centerY - tailTipRadius,
+                x2 = backOuterX,
+                y2 = centerY - tailTipRadius * kCircle,
+                x3 = backOuterX,
+                y3 = centerY
+            )
+            cubicTo(
+                x1 = backOuterX,
+                y1 = centerY + tailTipRadius * kCircle,
+                x2 = tailCircleCenterX + tailSign * (tailTipRadius * kCircle),
+                y2 = centerY + tailTipRadius,
+                x3 = tailCircleCenterX,
+                y3 = centerY + tailTipRadius
+            )
+            // Tapered Tail Tip Bottom -> Bottom Crest
+            cubicTo(
+                x1 = bridgeCp2X,
+                y1 = centerY + tailTipRadius,
+                x2 = bridgeCp1X,
+                y2 = centerY + ry,
+                x3 = headX,
+                y3 = centerY + ry
+            )
         }
+
+        // Front-Bottom Quadrant (Bottom Crest -> Front Apex)
+        cubicTo(
+            x1 = headX - tailSign * (leadRx * leadK),
+            y1 = centerY + ry,
+            x2 = frontApexX,
+            y2 = centerY + ry * leadK,
+            x3 = frontApexX,
+            y3 = centerY
+        )
+        close()
     }
 
-    val leadingX = if (isRestingSquircle) currentX - squircleHalfWidth else currentX - (tailSign * (R + tailLength * 0.2f))
-    val tailTipX = if (isRestingSquircle) currentX + squircleHalfWidth else currentX + (tailSign * (R + tailLength))
+    // 3. Soft Caustic Drop-Shadow Under Droplet When Lifted
+    if (lift > 0.05f) {
+        drawPath(
+            path = dropletPath,
+            color = accentColor.copy(alpha = (if (isDarkMode) 0.16f else 0.12f) * lift),
+            style = Stroke(width = 4.dp.toPx() * lift, cap = StrokeCap.Round)
+        )
+    }
 
-    // 2. Apple Liquid Glass Translucent Body (with dynamic internal refraction)
-    val startGradientX = if (tailSign >= 0) leadingX else tailTipX
-    val endGradientX = if (tailSign >= 0) tailTipX else leadingX
+    // 4. Translucent Liquid Glass Fill with Internal Refraction
+    val gradStartX = if (tailSign >= 0f) frontApexX else backOuterX
+    val gradEndX = if (tailSign >= 0f) backOuterX else frontApexX
 
     val glassFill = if (isDarkMode) {
         Brush.linearGradient(
             colors = listOf(
-                accentColor.copy(alpha = 0.38f + 0.10f * stretchRatio),
-                Color(0xFF334155).copy(alpha = 0.45f),
-                Color(0xFF1E293B).copy(alpha = 0.65f),
-                accentColor.copy(alpha = 0.22f + 0.08f * stretchRatio)
+                accentColor.copy(alpha = 0.36f + 0.14f * dynamicMorph),
+                Color(0xFF314159).copy(alpha = 0.44f),
+                Color(0xFF1A2438).copy(alpha = 0.62f),
+                accentColor.copy(alpha = 0.22f + 0.10f * stretchRatio)
             ),
-            start = Offset(startGradientX, centerY - Ry),
-            end = Offset(endGradientX, centerY + Ry)
+            start = Offset(gradStartX, centerY - ry),
+            end = Offset(gradEndX, centerY + ry)
         )
     } else {
         Brush.linearGradient(
             colors = listOf(
-                Color.White.copy(alpha = 0.90f),
-                accentColor.copy(alpha = 0.24f + 0.12f * stretchRatio),
-                Color.White.copy(alpha = 0.65f),
+                Color(0xFFF0F4F9).copy(alpha = 0.88f),
+                accentColor.copy(alpha = 0.22f + 0.14f * dynamicMorph),
+                Color(0xFFDCE4EF).copy(alpha = 0.80f),
                 accentColor.copy(alpha = 0.16f + 0.10f * stretchRatio)
             ),
-            start = Offset(startGradientX, centerY - Ry),
-            end = Offset(endGradientX, centerY + Ry)
+            start = Offset(gradStartX, centerY - ry),
+            end = Offset(gradEndX, centerY + ry)
         )
     }
+    drawPath(path = dropletPath, brush = glassFill)
 
-    drawPath(path = activePath, brush = glassFill)
-
-    // 3. Specular Lens Highlight
-    if (isRestingSquircle) {
-        // Luxury Top Glass Arc for Squircle
-        val squircleShimmer = Path().apply {
-            moveTo(currentX - squircleHalfWidth * 0.7f, centerY - squircleHalfHeight + 3.dp.toPx())
-            lineTo(currentX + squircleHalfWidth * 0.7f, centerY - squircleHalfHeight + 3.dp.toPx())
-        }
-        drawPath(
-            path = squircleShimmer,
-            brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
-                    Color.Transparent
-                )
-            ),
-            style = Stroke(width = with(this) { 1.8.dp.toPx() }, cap = StrokeCap.Round)
+    // 5. Continuous Upper Crest Specular Reflection (gleams across droplet dome)
+    val upperHighlightStart = headX - tailSign * (leadRx * 0.52f)
+    val upperHighlightEnd = headX + tailSign * (leadRx * 0.42f + tailExtension * 0.45f)
+    val highlightCurve = Path().apply {
+        moveTo(upperHighlightStart, centerY - ry * 0.74f)
+        cubicTo(
+            x1 = headX - tailSign * (leadRx * 0.12f),
+            y1 = centerY - ry * 0.88f,
+            x2 = headX + tailSign * (leadRx * 0.25f + tailExtension * 0.22f),
+            y2 = centerY - ry * (0.86f - 0.18f * stretchRatio),
+            x3 = upperHighlightEnd,
+            y3 = centerY - (ry * (1f - 0.35f * stretchRatio)) * 0.72f
         )
-    } else {
-        // Continuous Leading Edge Dome Specular Lens Highlight for Droplet
-        val leadingSpecular = Path().apply {
-            moveTo(currentX - tailSign * R * 0.45f, centerY - Ry * 0.68f)
+    }
+    drawPath(
+        path = highlightCurve,
+        brush = Brush.horizontalGradient(
+            colors = listOf(
+                Color.Transparent,
+                Color(0xFFF3F6FA).copy(alpha = if (isDarkMode) 0.72f else 0.76f),
+                Color.Transparent
+            )
+        ),
+        style = Stroke(width = 1.9.dp.toPx(), cap = StrokeCap.Round)
+    )
+
+    // 6. Leading-Edge Curved Lens Specular (brightens dynamically with motion/lift)
+    if (dynamicMorph > 0.08f) {
+        val leadingLens = Path().apply {
+            moveTo(headX - tailSign * leadRx * 0.46f, centerY - ry * 0.62f)
             cubicTo(
-                x1 = leadingX + tailSign * (R * 0.12f),
-                y1 = centerY - Ry * 0.36f,
-                x2 = leadingX + tailSign * (R * 0.12f),
-                y2 = centerY + Ry * 0.36f,
-                x3 = currentX - tailSign * R * 0.45f,
-                y3 = centerY + Ry * 0.68f
+                x1 = frontApexX + tailSign * (leadRx * 0.15f),
+                y1 = centerY - ry * 0.30f,
+                x2 = frontApexX + tailSign * (leadRx * 0.15f),
+                y2 = centerY + ry * 0.30f,
+                x3 = headX - tailSign * leadRx * 0.46f,
+                y3 = centerY + ry * 0.62f
             )
         }
         drawPath(
-            path = leadingSpecular,
+            path = leadingLens,
             brush = Brush.verticalGradient(
                 colors = listOf(
-                    Color.White.copy(alpha = 0.15f),
-                    Color.White.copy(alpha = 0.88f),
-                    Color.White.copy(alpha = 0.15f)
-                ),
-                startY = centerY - Ry * 0.68f,
-                endY = centerY + Ry * 0.68f
-            ),
-            style = Stroke(width = with(this) { 2.2.dp.toPx() }, cap = StrokeCap.Round)
-        )
-    }
-
-    // 4. Top Crest Specular Shimmer (Gleams across the upper curvature when moving)
-    if (!isRestingSquircle) {
-        val topSpecular = Path().apply {
-            moveTo(currentX - tailSign * R * 0.5f, centerY - Ry * 0.72f)
-            cubicTo(
-                x1 = currentX,
-                y1 = centerY - Ry * 0.94f,
-                x2 = currentX + tailSign * (R * 0.4f + tailLength * 0.35f),
-                y2 = centerY - (Ry * 0.90f - thinning * 0.4f),
-                x3 = currentX + tailSign * (R * 0.75f + tailLength * 0.60f),
-                y3 = centerY - (tailTipRadius * 1.15f)
-            )
-        }
-        drawPath(
-            path = topSpecular,
-            brush = Brush.horizontalGradient(
-                colors = listOf(
                     Color.Transparent,
-                    Color.White.copy(alpha = if (isDarkMode) 0.65f else 0.85f),
+                    Color(0xFFF3F6FA).copy(alpha = if (isDarkMode) 0.78f * dynamicMorph else 0.68f * dynamicMorph),
                     Color.Transparent
-                )
+                ),
+                startY = centerY - ry * 0.62f,
+                endY = centerY + ry * 0.62f
             ),
-            style = Stroke(width = with(this) { 1.6.dp.toPx() }, cap = StrokeCap.Round)
+            style = Stroke(width = 2.0.dp.toPx(), cap = StrokeCap.Round)
         )
     }
 
-    // 5. Outer Liquid Glass Rim Border with Pristine Refraction
+    // 7. Pristine Rim Refraction Border
     drawPath(
-        path = activePath,
+        path = dropletPath,
         brush = Brush.linearGradient(
             colors = if (isDarkMode) {
                 listOf(
                     Color.White.copy(alpha = 0.68f),
-                    accentColor.copy(alpha = 0.75f),
-                    accentColor.copy(alpha = 0.30f),
-                    Color.White.copy(alpha = 0.45f)
+                    accentColor.copy(alpha = 0.78f),
+                    accentColor.copy(alpha = 0.32f),
+                    Color.White.copy(alpha = 0.48f)
                 )
             } else {
                 listOf(
-                    Color.White.copy(alpha = 0.95f),
-                    accentColor.copy(alpha = 0.55f),
-                    Color(0xFFCBD5E1),
-                    Color.White.copy(alpha = 0.75f)
+                    Color(0xFFF3F6FA).copy(alpha = 0.88f),
+                    accentColor.copy(alpha = 0.54f),
+                    Color(0xFFB5C3D4),
+                    Color(0xFFF3F6FA).copy(alpha = 0.72f)
                 )
             },
-            start = Offset(startGradientX, centerY - Ry),
-            end = Offset(endGradientX, centerY + Ry)
+            start = Offset(gradStartX, centerY - ry),
+            end = Offset(gradEndX, centerY + ry)
         ),
-        style = Stroke(width = with(this) { 1.2.dp.toPx() }, cap = StrokeCap.Round)
+        style = Stroke(width = 1.25.dp.toPx(), cap = StrokeCap.Round)
     )
 
-    // 6. Dynamic Internal Photon Glint (appears progressively with fluid velocity)
-    if (stretchRatio > 0.25f) {
-        val glintAlpha = ((stretchRatio - 0.25f) / 0.75f).coerceIn(0f, 1f)
+    // 8. Capillary Photon Glint inside Leading Dome
+    if (stretchRatio > 0.18f || lift > 0.45f) {
+        val glintAlpha = maxOf(
+            ((stretchRatio - 0.18f) / 0.82f).coerceIn(0f, 1f),
+            ((lift - 0.45f) / 0.55f).coerceIn(0f, 1f) * 0.65f
+        )
+        val glintPos = Offset(headX - tailSign * leadRx * 0.36f, centerY - ry * 0.26f)
         drawCircle(
-            color = Color.White.copy(alpha = 0.90f * glintAlpha),
-            radius = with(this) { 2.4.dp.toPx() },
-            center = Offset(currentX - tailSign * R * 0.35f, centerY - Ry * 0.25f)
+            color = accentColor.copy(alpha = 0.42f * glintAlpha),
+            radius = 5.5.dp.toPx(),
+            center = glintPos
         )
         drawCircle(
-            color = accentColor.copy(alpha = 0.45f * glintAlpha),
-            radius = with(this) { 6.dp.toPx() },
-            center = Offset(currentX - tailSign * R * 0.35f, centerY - Ry * 0.25f)
+            color = Color.White.copy(alpha = 0.92f * glintAlpha),
+            radius = 2.2.dp.toPx(),
+            center = glintPos
         )
     }
 }

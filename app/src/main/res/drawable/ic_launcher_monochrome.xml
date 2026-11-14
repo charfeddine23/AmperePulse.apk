@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Material You / Android 13+ Monochrome Themed Icon Layer -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round"
+        android:pathData="M34.6,73.4 A27.5,27.5 0 0,1 67.2,29.8" />
+
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round"
+        android:pathData="M73.4,34.6 A27.5,27.5 0 0,1 40.8,78.2" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M74.2,27.2 A2.4,2.4 0 1,1 74.19,27.2 Z" />
+
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M56.5,31.5 L41.8,55.5 L52.0,55.5 L51.5,76.5 L66.2,52.5 L56.0,52.5 Z" />
+</vector>

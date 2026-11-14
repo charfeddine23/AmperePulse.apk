@@ -4,7 +4,8 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Pure transparent backing layer so the luxury emblem adapts seamlessly to every wallpaper & launcher theme -->
     <path
-        android:fillColor="#0B0E0D"
+        android:fillColor="#00000000"
         android:pathData="M0,0h108v108h-108z" />
 </vector>

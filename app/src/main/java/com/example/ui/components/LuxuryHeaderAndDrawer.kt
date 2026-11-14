@@ -25,6 +25,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,8 +65,17 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
@@ -73,6 +83,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,12 +98,22 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.R
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlin.math.abs
 import com.example.audio.CyberHapticsEngine
 import com.example.data.GlassThemeConfig
 import com.example.data.TemperatureUnit
@@ -123,6 +144,7 @@ fun LuxuryTopBar(
     themeConfig: GlassThemeConfig,
     onToggleDarkMode: () -> Unit,
     onOpenSkinVault: () -> Unit = {},
+    onOpenRedeemDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = themeConfig.isDarkMode
@@ -137,24 +159,32 @@ fun LuxuryTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // App Title & Status Subtitle
+        // App Title, Transparent Minimalist Brand Emblem & Status Subtitle
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_brand_emblem),
+                    contentDescription = "Ampere Pulse Emblem",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .testTag("in_app_brand_icon")
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,
                     fontFamily = OutfitFontFamily,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 22.sp,
+                    fontSize = 21.sp,
                     letterSpacing = (-0.3).sp,
                     color = if (isDark) TextWhite else TextCharcoal
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                PulsingNeonDot(color = accentColor, sizeDp = 6.dp)
+                Spacer(modifier = Modifier.width(6.dp))
+                PulsingNeonDot(color = accentColor, sizeDp = 5.5.dp)
 
-                // Dynamic glowing AppTier badge (FREE / VIP / PREMIUM) with fluid neon aura
-                Spacer(modifier = Modifier.width(8.dp))
+                // Dynamic glowing AppTier badge (FREE / VIP / PREMIUM)
+                Spacer(modifier = Modifier.width(7.dp))
                 val tier = themeConfig.appTier
-                val tierColor = tier.color
+                val tierColor = tier.displayColor(isDark)
                 val infiniteTransition = rememberInfiniteTransition(label = "tierGlow")
                 val pulseGlow by infiniteTransition.animateFloat(
                     initialValue = 0.55f,
@@ -187,7 +217,9 @@ fun LuxuryTopBar(
                             ),
                             shape = RoundedCornerShape(8.dp)
                         )
-                        .clickable { onMenuToggle() }
+                        .clickable {
+                            if (!themeConfig.isPremiumUnlocked) onOpenRedeemDialog() else onMenuToggle()
+                        }
                         .padding(horizontal = 7.dp, vertical = 2.5.dp)
                         .testTag("app_tier_badge")
                 ) {
@@ -226,10 +258,10 @@ fun LuxuryTopBar(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(if (isDark) Color(0xFF1E293B) else Color(0xFFFFFFFF))
+                    .background(if (isDark) Color(0xFF1E293B) else Color(0xFFE7ECF3))
                     .border(
                         1.dp,
-                        if (isDark) Color(0x33475569) else Color(0x4DE2E8F0),
+                        if (isDark) Color(0x33475569) else Color(0x99BECAD8),
                         RoundedCornerShape(12.dp)
                     )
                     .clickable { onToggleDarkMode() },
@@ -293,8 +325,8 @@ fun LuxuryHamburgerButton(
         label = "line3Y"
     )
 
-    val buttonBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
-    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x66E2E8F0)
+    val buttonBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE7ECF3)
+    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x99BECAD8)
     val lineColor = if (isDarkMode) TextWhite else TextCharcoal
 
     Box(
@@ -357,6 +389,7 @@ fun LuxurySettingsDrawer(
     themeConfig: GlassThemeConfig,
     onConfigChange: (GlassThemeConfig) -> Unit,
     onOpenSkinVault: () -> Unit = {},
+    onOpenRedeemDialog: () -> Unit = {},
     updateUiState: InAppUpdateUiState = InAppUpdateUiState(),
     onCheckUpdates: () -> Unit = {},
     onOpenUpdateDialog: () -> Unit = {},
@@ -371,15 +404,15 @@ fun LuxurySettingsDrawer(
     val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
 
-    // Eye-friendly soft Nordic twilight (Dark) & warm porcelain mist (Light) palette
+    // Eye-friendly soft Nordic twilight (Dark) & warm muted stone mist (Light) palette
     val drawerBgBrush = if (isDark) {
         Brush.verticalGradient(colors = listOf(Color(0xF8151D2C), Color(0xFA101622)))
     } else {
-        Brush.verticalGradient(colors = listOf(Color(0xFCF7F9FD), Color(0xFCEFF4FA)))
+        Brush.verticalGradient(colors = listOf(Color(0xFCE5ECF4), Color(0xFCD9E1EC)))
     }
-    val surfaceCardColor = if (isDark) Color(0xFF1B2436) else Color(0xFFFFFFFF)
-    val softTileColor = if (isDark) Color(0xFF212C42) else Color(0xFFF1F5FA)
-    val subtleBorder = if (isDark) Color(0xFF2A364F) else Color(0xFFE3EAF3)
+    val surfaceCardColor = if (isDark) Color(0xFF1B2436) else Color(0xFFECF0F6)
+    val softTileColor = if (isDark) Color(0xFF212C42) else Color(0xFFD2DBE6)
+    val subtleBorder = if (isDark) Color(0xFF2A364F) else Color(0xFFC0CDDC)
     val textColor = if (isDark) Color(0xFFE9EFF8) else TextCharcoal
     val subTextColor = if (isDark) Color(0xFF93A5BF) else TextSlate
 
@@ -408,11 +441,46 @@ fun LuxurySettingsDrawer(
                 ) { onClose() },
             contentAlignment = Alignment.CenterEnd
         ) {
+            val drawerDensity = LocalDensity.current
+            val closeSwipeTriggerPx = with(drawerDensity) { 38.dp.toPx() }
+
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(0.86f)
                     .widthIn(max = 420.dp)
+                    .pointerInput(isOpen) {
+                        val touchSlop = viewConfiguration.touchSlop
+                        coroutineScope {
+                            while (isActive) {
+                                awaitPointerEventScope {
+                                    val down = awaitFirstDown(
+                                        requireUnconsumed = false,
+                                        pass = PointerEventPass.Main
+                                    )
+                                    val startX = down.position.x
+                                    val startY = down.position.y
+                                    while (true) {
+                                        val event = awaitPointerEvent(PointerEventPass.Main)
+                                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                        if (!change.pressed || change.isConsumed) break
+
+                                        val totalDx = change.position.x - startX
+                                        val totalDy = change.position.y - startY
+                                        if (abs(totalDy) > touchSlop && abs(totalDy) >= abs(totalDx)) break
+
+                                        // Swipe left-to-right to dismiss the right-side Settings Drawer
+                                        if (totalDx > closeSwipeTriggerPx && abs(totalDx) > abs(totalDy) * 1.35f) {
+                                            change.consume()
+                                            CyberHapticsEngine.triggerTactileTick(context)
+                                            onClose()
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -440,22 +508,33 @@ fun LuxurySettingsDrawer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "الإعدادات",
-                                fontFamily = OutfitFontFamily,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp,
-                                color = textColor
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_brand_emblem),
+                                contentDescription = "Ampere Pulse Logo",
+                                modifier = Modifier.size(30.dp)
                             )
-                            Text(
-                                text = "تخصيص بسيط وسلس لتجربة Ampere Pulse",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 11.sp,
-                                color = subTextColor,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "الإعدادات",
+                                    fontFamily = OutfitFontFamily,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 21.sp,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = "تخصيص بسيط وسلس لتجربة Ampere Pulse",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontSize = 10.5.sp,
+                                    color = subTextColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
 
                         Row(
@@ -579,6 +658,81 @@ fun LuxurySettingsDrawer(
                                 tint = accentColor,
                                 modifier = Modifier.size(20.dp)
                             )
+                        }
+                    }
+
+                    // 2b. Quick Premium Redeem Banner (shown cleanly when Premium is locked)
+                    if (!themeConfig.isPremiumUnlocked) {
+                        val goldColor = if (isDark) Color(0xFFFFD700) else Color(0xFFB77900)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 54.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            goldColor.copy(alpha = if (isDark) 0.20f else 0.13f),
+                                            surfaceCardColor
+                                        )
+                                    )
+                                )
+                                .border(1.1.dp, goldColor.copy(alpha = 0.55f), RoundedCornerShape(18.dp))
+                                .clickable {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onClose()
+                                    onOpenRedeemDialog()
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                .testTag("drawer_redeem_premium_button")
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(goldColor.copy(alpha = if (isDark) 0.22f else 0.14f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.VpnKey,
+                                            contentDescription = null,
+                                            tint = goldColor,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = "تفعيل وضع PREMIUM برمز Redeem",
+                                            fontFamily = OutfitFontFamily,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.5.sp,
+                                            color = textColor
+                                        )
+                                        Text(
+                                            text = "أدخل رمز التفعيل لفتح المزايا الذهبية",
+                                            fontFamily = PlusJakartaSansFontFamily,
+                                            fontSize = 10.sp,
+                                            color = goldColor
+                                        )
+                                    }
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                    contentDescription = null,
+                                    tint = goldColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 
@@ -786,8 +940,9 @@ fun LuxurySettingsDrawer(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     com.example.data.AppTier.values().forEach { tierOption ->
-                                        val isSelected = themeConfig.appTier == tierOption
-                                        val tColor = tierOption.color
+                                        val isLockedPremium = tierOption == com.example.data.AppTier.PREMIUM && !themeConfig.isPremiumUnlocked
+                                        val isSelected = themeConfig.appTier == tierOption && !isLockedPremium
+                                        val tColor = tierOption.displayColor(isDark)
                                         Box(
                                             modifier = Modifier
                                                 .weight(1f)
@@ -804,19 +959,48 @@ fun LuxurySettingsDrawer(
                                                 )
                                                 .clickable {
                                                     CyberHapticsEngine.triggerTactileTick(context)
-                                                    onConfigChange(themeConfig.copy(appTier = tierOption))
+                                                    if (isLockedPremium) {
+                                                        onClose()
+                                                        onOpenRedeemDialog()
+                                                    } else {
+                                                        onConfigChange(themeConfig.copy(appTier = tierOption))
+                                                    }
                                                 },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Text(
-                                                text = tierOption.label,
-                                                fontFamily = OutfitFontFamily,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 11.5.sp,
-                                                color = if (isSelected) tColor else subTextColor
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                if (isLockedPremium) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Lock,
+                                                        contentDescription = null,
+                                                        tint = tColor,
+                                                        modifier = Modifier.size(12.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                }
+                                                Text(
+                                                    text = tierOption.label,
+                                                    fontFamily = OutfitFontFamily,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 11.5.sp,
+                                                    color = if (isSelected || isLockedPremium) tColor else subTextColor
+                                                )
+                                            }
                                         }
                                     }
+                                }
+                                if (themeConfig.isPremiumUnlocked) {
+                                    val goldTint = com.example.data.AppTier.PREMIUM.displayColor(isDark)
+                                    Text(
+                                        text = "وضع PREMIUM مفعّل بالكامل ✓",
+                                        fontFamily = PlusJakartaSansFontFamily,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 10.5.sp,
+                                        color = goldTint
+                                    )
                                 }
                             }
 
@@ -1374,8 +1558,8 @@ private fun LuxuriousAutoUpdateStatusCard(
     } else {
         Brush.linearGradient(
             colors = listOf(
-                Color(0xFFFFFFFF),
-                Color(0xFFF4F7FC)
+                Color(0xFFECF0F6),
+                Color(0xFFE0E7F0)
             )
         )
     }
@@ -1422,7 +1606,7 @@ private fun LuxuriousAutoUpdateStatusCard(
                     brush = Brush.linearGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color.White.copy(alpha = if (isDark) 0.045f else 0.22f),
+                            Color(0xFFF3F6FA).copy(alpha = if (isDark) 0.045f else 0.20f),
                             Color.Transparent
                         ),
                         start = sweepStart,
@@ -1527,7 +1711,7 @@ private fun LuxuriousAutoUpdateStatusCard(
                                 if (autoUpdateEnabled) {
                                     accentColor.copy(alpha = if (isDark) 0.22f else 0.12f)
                                 } else {
-                                    if (isDark) Color(0xFF232F45) else Color(0xFFEAF0F7)
+                                    if (isDark) Color(0xFF232F45) else Color(0xFFD2DBE6)
                                 }
                             )
                             .border(
@@ -1603,7 +1787,7 @@ private fun LuxuriousAutoUpdateStatusCard(
                             .height(6.dp)
                             .clip(RoundedCornerShape(4.dp)),
                         color = statusColor,
-                        trackColor = if (isDark) Color(0xFF1E293B) else Color(0xFFE2E8F0),
+                        trackColor = if (isDark) Color(0xFF1E293B) else Color(0xFFCED8E5),
                         strokeCap = StrokeCap.Round
                     )
                     Spacer(modifier = Modifier.height(5.dp))
@@ -1656,7 +1840,7 @@ private fun LuxuriousAutoUpdateStatusCard(
                 }
 
                 val primaryBg = when {
-                    updateUiState.isDownloading -> if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0)
+                    updateUiState.isDownloading -> if (isDark) Color(0xFF334155) else Color(0xFFD2DBE6)
                     updateUiState.isDownloadedReadyToInstall -> TactileGreen
                     updateUiState.updateAvailable -> statusColor
                     else -> accentColor
@@ -1665,7 +1849,7 @@ private fun LuxuriousAutoUpdateStatusCard(
                 val primaryTextColor = if (updateUiState.isDownloading) {
                     if (isDark) TextWhite else TextCharcoal
                 } else {
-                    Color.White
+                    Color(0xFFF2F6FA)
                 }
 
                 Box(
@@ -1723,6 +1907,257 @@ private fun LuxuriousAutoUpdateStatusCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Centered Luxurious Kinetic Modal Dialog for unlocking PREMIUM tier via Redeem Code.
+ */
+@Composable
+fun PremiumRedeemDialog(
+    isOpen: Boolean,
+    themeConfig: GlassThemeConfig,
+    onDismiss: () -> Unit,
+    onRedeemCode: (String) -> Boolean
+) {
+    if (!isOpen) return
+
+    BackHandler { onDismiss() }
+
+    val context = LocalContext.current
+    val isDark = themeConfig.isDarkMode
+    val goldAccent = com.example.data.AppTier.PREMIUM.displayColor(isDark)
+    val textColor = if (isDark) Color(0xFFE9EFF8) else TextCharcoal
+    val subTextColor = if (isDark) Color(0xFF9FB0C7) else TextSlate
+    val cardBrush = if (isDark) {
+        Brush.verticalGradient(colors = listOf(Color(0xF7182235), Color(0xFA101726)))
+    } else {
+        Brush.verticalGradient(colors = listOf(Color(0xFCEDF1F7), Color(0xFCE0E7F0)))
+    }
+
+    var codeInput by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+    var isUnlockedJustNow by remember { mutableStateOf(themeConfig.isPremiumUnlocked) }
+
+    LaunchedEffect(isOpen) {
+        if (isOpen) {
+            isError = false
+            isUnlockedJustNow = themeConfig.isPremiumUnlocked
+            if (!themeConfig.isPremiumUnlocked) {
+                codeInput = ""
+            }
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(cardBrush)
+                    .border(
+                        1.4.dp,
+                        goldAccent.copy(alpha = 0.55f),
+                        RoundedCornerShape(28.dp)
+                    )
+                    .padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(62.dp)
+                        .clip(CircleShape)
+                        .background(
+                            (if (isUnlockedJustNow) TactileGreen else goldAccent)
+                                .copy(alpha = if (isDark) 0.22f else 0.14f)
+                        )
+                        .border(
+                            1.5.dp,
+                            (if (isUnlockedJustNow) TactileGreen else goldAccent).copy(alpha = 0.7f),
+                            CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isUnlockedJustNow) Icons.Default.Check else Icons.Default.WorkspacePremium,
+                        contentDescription = null,
+                        tint = if (isUnlockedJustNow) TactileGreen else goldAccent,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = if (isUnlockedJustNow) "تم تفعيل وضع PREMIUM!" else "تفعيل وضع PREMIUM",
+                    fontFamily = OutfitFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = textColor,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = if (isUnlockedJustNow) {
+                        "أصبحت تتمتع الآن بشارة PREMIUM الذهبية ومحرك الطاقة الدقيق بشكل دائم."
+                    } else {
+                        "أدخل رمز التفعيل الخاص بك (Redeem Code) لفتح وضع PREMIUM الذهبي."
+                    },
+                    fontFamily = PlusJakartaSansFontFamily,
+                    fontSize = 12.5.sp,
+                    color = subTextColor,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 18.sp
+                )
+
+                if (!isUnlockedJustNow) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    OutlinedTextField(
+                        value = codeInput,
+                        onValueChange = {
+                            codeInput = it
+                            if (isError) isError = false
+                        },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("redeem_code_input"),
+                        placeholder = {
+                            Text(
+                                text = "أدخل رمز التفعيل هنا...",
+                                fontFamily = PlusJakartaSansFontFamily,
+                                fontSize = 13.sp,
+                                color = subTextColor.copy(alpha = 0.75f)
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.VpnKey,
+                                contentDescription = null,
+                                tint = if (isError) TactileCoralRed else goldAccent
+                            )
+                        },
+                        isError = isError,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = if (isError) TactileCoralRed else goldAccent,
+                            unfocusedBorderColor = if (isError) TactileCoralRed else if (isDark) Color(0xFF334155) else Color(0x99BECAD8),
+                            focusedTextColor = textColor,
+                            unfocusedTextColor = textColor,
+                            focusedContainerColor = if (isDark) Color(0xFF131B2B) else Color(0xFFDCE3EC),
+                            unfocusedContainerColor = if (isDark) Color(0xFF131B2B) else Color(0xFFDCE3EC)
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    if (isError) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "الرمز غير صحيح، يرجى التحقق من الكتابة والمحاولة مجدداً.",
+                            fontFamily = PlusJakartaSansFontFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 11.5.sp,
+                            color = TactileCoralRed,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .weight(0.42f)
+                                .heightIn(min = 48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isDark) Color(0xFF1E293B) else Color(0xFFD2DBE6))
+                                .clickable {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onDismiss()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "إلغاء",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = subTextColor
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val ok = onRedeemCode(codeInput)
+                                if (ok) {
+                                    isUnlockedJustNow = true
+                                    isError = false
+                                } else {
+                                    CyberHapticsEngine.triggerThermalWarning(context)
+                                    isError = true
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(0.58f)
+                                .heightIn(min = 48.dp)
+                                .testTag("redeem_code_submit_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = goldAccent,
+                                contentColor = Color(0xFFF2F6FA)
+                            )
+                        ) {
+                            Text(
+                                text = "تفعيل Premium",
+                                fontFamily = OutfitFontFamily,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = Color(0xFFF2F6FA)
+                            )
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(18.dp))
+                    Button(
+                        onClick = {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            onDismiss()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TactileGreen,
+                            contentColor = Color(0xFFF2F6FA)
+                        )
+                    ) {
+                        Text(
+                            text = "رائع! متابعة",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            color = Color(0xFFF2F6FA)
+                        )
+                    }
                 }
             }
         }

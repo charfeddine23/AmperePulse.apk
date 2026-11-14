@@ -167,5 +167,13 @@ class ExampleUnitTest {
         assertEquals(0, com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.0.5", "1.0.5"))
         assertTrue(com.example.data.update.InAppUpdateEngine.compareSemanticVersions("1.0.4", "1.0.5") < 0)
     }
+
+    @Test
+    fun testPremiumRedeemCodeGatingDefaults() {
+        val config = GlassThemeConfig()
+        assertFalse(config.isPremiumUnlocked)
+        assertEquals(com.example.data.AppTier.FREE, config.appTier)
+        assertEquals("charfeddine23a", com.example.ui.AmperePulseViewModel.PREMIUM_REDEEM_CODE)
+    }
 }
 

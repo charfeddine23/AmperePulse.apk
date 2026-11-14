@@ -408,7 +408,7 @@ fun DetailedWaveformGraph(
                 center = maxCoord
             )
             drawCircle(
-                color = Color.White,
+                color = Color(0xFFF2F6FA),
                 radius = 2.dp.toPx(),
                 center = maxCoord
             )
@@ -479,7 +479,7 @@ private fun DrawScope.drawOptimizedOscilloscopeGrid(
     height: Float,
     isDarkMode: Boolean
 ) {
-    val gridColor = if (isDarkMode) Color(0x22475569) else Color(0x33CBD5E1)
+    val gridColor = if (isDarkMode) Color(0x22475569) else Color(0x44A2B2C6)
     val dashEffect = PathEffect.dashPathEffect(floatArrayOf(4f, 6f), 0f)
     val stroke = Stroke(width = 1.dp.toPx(), pathEffect = dashEffect)
 

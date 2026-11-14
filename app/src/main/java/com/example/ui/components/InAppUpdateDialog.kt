@@ -134,7 +134,7 @@ fun InAppUpdateDialog(
         )
     } else {
         Brush.verticalGradient(
-            colors = listOf(Color(0xFDFFFFFF), Color(0xFAF3F7FC))
+            colors = listOf(Color(0xFCEDF1F7), Color(0xFCE0E7F0))
         )
     }
 
@@ -432,7 +432,7 @@ fun InAppUpdateDialog(
 
                             // Inner solid glass circular core
                             drawCircle(
-                                color = if (isDark) Color(0xFF111828) else Color(0xFFF3F7FD),
+                                color = if (isDark) Color(0xFF111828) else Color(0xFFD7E0EC),
                                 radius = innerRadius,
                                 center = Offset(cx, cy)
                             )
@@ -519,7 +519,7 @@ fun InAppUpdateDialog(
                                 }
                                 drawPath(
                                     path = fuselage,
-                                    color = if (isDark) Color(0xFFF4F8FC) else Color(0xFFFFFFFF)
+                                    color = if (isDark) Color(0xFFF2F6FA) else Color(0xFFF0F4FA)
                                 )
                                 if (!isDark) {
                                     drawPath(
@@ -650,7 +650,7 @@ fun InAppUpdateDialog(
                                     .height(8.dp)
                                     .clip(RoundedCornerShape(6.dp)),
                                 color = statusTint,
-                                trackColor = if (isDark) Color(0xFF1F2A3F) else Color(0xFFE4ECF5),
+                                trackColor = if (isDark) Color(0xFF1F2A3F) else Color(0xFFCED8E5),
                                 strokeCap = StrokeCap.Round
                             )
                             Spacer(modifier = Modifier.height(8.dp))

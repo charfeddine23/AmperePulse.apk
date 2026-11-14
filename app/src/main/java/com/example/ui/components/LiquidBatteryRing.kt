@@ -133,8 +133,8 @@ fun LiquidBatteryRing(
 
             // 1. Neumorphic Extruded Dial Dual Shadows
             val shadowOffset = 6.dp.toPx()
-            val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2E9AAEC4)
-            val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0xE6FFFFFF)
+            val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x407589A2)
+            val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0x7AF2F5FA)
 
             // Bottom-right shadow
             drawCircle(
@@ -151,13 +151,12 @@ fun LiquidBatteryRing(
             )
 
             // Dial Disc Surface
-            val discColor = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = if (isDarkMode) {
                         listOf(Color(0xFF243348), Color(0xFF1A2433))
                     } else {
-                        listOf(Color(0xFFFFFFFF), Color(0xFFF7FAFD), Color(0xFFEFF3F8))
+                        listOf(Color(0xFFECF1F7), Color(0xFFE5EBF2), Color(0xFFD9E1EB))
                     },
                     center = center,
                     radius = radius
@@ -182,14 +181,14 @@ fun LiquidBatteryRing(
 
             // 3. Tactile Inner Ring Bevel
             drawCircle(
-                color = if (isDarkMode) Color(0x33475569) else Color(0x66CBD5E1),
+                color = if (isDarkMode) Color(0x33475569) else Color(0x88B4C2D3),
                 radius = radius * 0.90f,
                 center = center,
                 style = Stroke(width = 1.dp.toPx())
             )
 
             // 4. Background Track Arc (Soft Neumorphic Groove)
-            val trackColor = if (isDarkMode) Color(0xFF28364B) else Color(0xFFE2E8F0)
+            val trackColor = if (isDarkMode) Color(0xFF28364B) else Color(0xFFCFD9E6)
             drawArc(
                 color = trackColor,
                 startAngle = 135f,

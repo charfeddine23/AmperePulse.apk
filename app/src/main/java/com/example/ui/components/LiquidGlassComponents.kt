@@ -39,6 +39,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.NeumorphBorderDark
+import com.example.ui.theme.NeumorphBorderLight
+import com.example.ui.theme.NeumorphCardBottomLight
+import com.example.ui.theme.NeumorphCardTopLight
+import com.example.ui.theme.NeumorphHighlightDark
+import com.example.ui.theme.NeumorphHighlightLight
+import com.example.ui.theme.NeumorphInsetLight
+import com.example.ui.theme.NeumorphShadowDark
+import com.example.ui.theme.NeumorphShadowLight
+import com.example.ui.theme.NeumorphSurfaceDark
+import com.example.ui.theme.NeumorphSurfaceLight
 import com.example.ui.theme.OutfitFontFamily
 import com.example.ui.theme.PlusJakartaSansFontFamily
 import com.example.ui.theme.TactileRoyalBlue
@@ -67,10 +78,10 @@ fun LiquidGlassCard(
 
     val tagModifier = if (testTag != null) Modifier.testTag(testTag) else Modifier
 
-    val surfaceColor = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
-    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
-    val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0xEBFFFFFF)
-    val borderColor = if (isDarkMode) Color(0x33475569) else Color(0x4DE2E8F0)
+    val surfaceColor = if (isDarkMode) NeumorphSurfaceDark else NeumorphSurfaceLight
+    val shadowColor = if (isDarkMode) NeumorphShadowDark else NeumorphShadowLight
+    val highlightColor = if (isDarkMode) NeumorphHighlightDark else NeumorphHighlightLight
+    val borderColor = if (isDarkMode) NeumorphBorderDark else NeumorphBorderLight
 
     Box(
         modifier = modifier
@@ -109,9 +120,9 @@ fun LiquidGlassCard(
                             )
                         } else {
                             listOf(
-                                Color.White,
-                                Color(0xFFFAFBFD),
-                                Color(0xFFF4F7FB)
+                                NeumorphCardTopLight,
+                                NeumorphSurfaceLight,
+                                NeumorphCardBottomLight
                             )
                         },
                         start = Offset(0f, 0f),
@@ -204,7 +215,7 @@ fun NeonBadge(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(
-                if (isDarkMode) Color(0x33334155) else Color(0xFFF1F5F9)
+                if (isDarkMode) Color(0x33334155) else NeumorphInsetLight
             )
             .border(
                 width = 1.dp,

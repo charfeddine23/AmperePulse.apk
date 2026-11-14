@@ -445,7 +445,7 @@ fun PrizeRoadLevelProgressCard(
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFF1F5F9))
+                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFD2DBE6))
                         .border(1.dp, accentColor.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
@@ -478,7 +478,7 @@ fun PrizeRoadLevelProgressCard(
                     .fillMaxWidth()
                     .height(16.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isDarkMode) Color(0xFF28364B) else Color(0xFFE2E8F0))
+                    .background(if (isDarkMode) Color(0xFF28364B) else Color(0xFFCED8E5))
             ) {
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val w = size.width
@@ -560,7 +560,7 @@ fun PrizeRoadLevelProgressCard(
 
                     // Subtle inner border for tactile recessed slot
                     drawRoundRect(
-                        color = if (isDarkMode) Color(0x33475569) else Color(0x4DCBD5E1),
+                        color = if (isDarkMode) Color(0x33475569) else Color(0x99B4C2D3),
                         size = size,
                         cornerRadius = CornerRadius(8.dp.toPx(), 8.dp.toPx()),
                         style = Stroke(width = 1.dp.toPx())

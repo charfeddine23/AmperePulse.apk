@@ -99,9 +99,9 @@ fun LevelLinkedBatteryShell(
         label = "cellPulse"
     )
 
-    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFFFFFFF)
-    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x2B9AAEC4)
-    val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0xE6FFFFFF)
+    val cardBg = if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE7ECF3)
+    val shadowColor = if (isDarkMode) Color(0x66000000) else Color(0x457589A2)
+    val highlightColor = if (isDarkMode) Color(0x1F94A3B8) else Color(0x7AF2F5FA)
     val textColor = if (isDarkMode) TextWhite else TextCharcoal
 
     Box(
@@ -130,7 +130,7 @@ fun LevelLinkedBatteryShell(
             .background(cardBg)
             .border(
                 width = 1.2.dp,
-                color = if (isEliteTier) tierGold.copy(alpha = 0.45f) else if (isDarkMode) Color(0x33475569) else Color(0x4DE2E8F0),
+                color = if (isEliteTier) tierGold.copy(alpha = 0.45f) else if (isDarkMode) Color(0x33475569) else Color(0x99BECAD8),
                 shape = RoundedCornerShape(24.dp)
             )
             .padding(18.dp)
@@ -255,10 +255,10 @@ fun LevelLinkedBatteryShell(
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFF1F5F9))
+                        .background(if (isDarkMode) Color(0xFF0F172A) else Color(0xFFD2DBE6))
                         .border(
                             width = 1.5.dp,
-                            color = if (isEliteTier) tierGold.copy(alpha = 0.6f) else if (isDarkMode) Color(0x44475569) else Color(0x66CBD5E1),
+                            color = if (isEliteTier) tierGold.copy(alpha = 0.6f) else if (isDarkMode) Color(0x44475569) else Color(0x99B4C2D3),
                             shape = RoundedCornerShape(12.dp)
                         )
                         .padding(horizontal = 6.dp, vertical = 6.dp)
@@ -276,7 +276,7 @@ fun LevelLinkedBatteryShell(
                             val cellBrush = if (isCellActive) {
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        Color.White.copy(alpha = 0.9f),
+                                        Color(0xFFF2F6FA).copy(alpha = 0.88f),
                                         cellColor,
                                         cellColor.copy(alpha = if (isCurrentHead) 0.7f * cellPulse else 0.85f)
                                     )
@@ -284,8 +284,8 @@ fun LevelLinkedBatteryShell(
                             } else {
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        if (isDarkMode) Color(0xFF1E293B) else Color(0xFFE2E8F0),
-                                        if (isDarkMode) Color(0xFF16202E) else Color(0xFFD6DFEB)
+                                        if (isDarkMode) Color(0xFF1E293B) else Color(0xFFCCD6E3),
+                                        if (isDarkMode) Color(0xFF16202E) else Color(0xFFC1CDDC)
                                     )
                                 )
                             }

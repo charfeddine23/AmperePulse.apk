@@ -1,8 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/ampere_pulse_icon_1794011282070"
-        android:gravity="center" />
-</layer-list>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Subtle translucent glass backing halo inside 66dp safe zone for universal contrast on both light & dark themes -->
+    <path
+        android:fillColor="#24101C30"
+        android:strokeColor="#38FFFFFF"
+        android:strokeWidth="1.0"
+        android:pathData="M54,23 A31,31 0 1,1 53.99,23 Z" />
+
+    <!-- Outer Precision Orbit Arc (Upper-Left Sweep) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:pathData="M34.6,73.4 A27.5,27.5 0 0,1 67.2,29.8">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="30"
+                android:startY="75"
+                android:endX="72"
+                android:endY="28">
+                <item android:offset="0.0" android:color="#FF2962FF" />
+                <item android:offset="1.0" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Outer Precision Orbit Arc (Lower-Right Sweep) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:pathData="M73.4,34.6 A27.5,27.5 0 0,1 40.8,78.2">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:type="linear"
+                android:startX="75"
+                android:startY="32"
+                android:endX="38"
+                android:endY="80">
+                <item android:offset="0.0" android:color="#FF00B0FF" />
+                <item android:offset="1.0" android:color="#FF2962FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Precision Telemetry Terminal Node Dot -->
+    <path
+        android:fillColor="#FF00E5FF"
+        android:strokeColor="#400F172A"
+        android:strokeWidth="0.8"
+        android:pathData="M74.2,27.2 A2.4,2.4 0 1,1 74.19,27.2 Z" />
+
+    <!-- Central Luxury Minimalist Ampere Bolt Silhouette (Crisp Contrast Shadow Rim) -->
+    <path
+        android:fillColor="#300F172A"
+        android:pathData="M56.8,32.2 L42.2,56.0 L52.4,56.0 L51.8,77.2 L66.8,53.0 L56.4,53.0 Z" />
+
+    <!-- Central Luxury Minimalist Ampere Bolt (Sapphire-to-Cryo Liquid Gradient) -->
+    <path
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="0.7"
+        android:strokeLineJoin="round"
+        android:pathData="M56.5,31.5 L41.8,55.5 L52.0,55.5 L51.5,76.5 L66.2,52.5 L56.0,52.5 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="42"
+                android:startY="31"
+                android:endX="66"
+                android:endY="77">
+                <item android:offset="0.0" android:color="#FF00E5FF" />
+                <item android:offset="0.48" android:color="#FF2979FF" />
+                <item android:offset="1.0" android:color="#FF1E40AF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

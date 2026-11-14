@@ -63,6 +63,9 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
     private val _isSkinVaultOpen = MutableStateFlow(false)
     val isSkinVaultOpen: StateFlow<Boolean> = _isSkinVaultOpen.asStateFlow()
 
+    private val _isRedeemDialogOpen = MutableStateFlow(false)
+    val isRedeemDialogOpen: StateFlow<Boolean> = _isRedeemDialogOpen.asStateFlow()
+
     private val updateEngine = InAppUpdateEngine(application.applicationContext)
     val updateUiState: StateFlow<InAppUpdateUiState> = updateEngine.uiState
 
@@ -171,6 +174,32 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
         _isSkinVaultOpen.value = open
     }
 
+    fun toggleRedeemDialog(open: Boolean) {
+        _isRedeemDialogOpen.value = open
+    }
+
+    fun redeemPremiumCode(rawCode: String): Boolean {
+        val cleaned = rawCode.trim()
+        if (cleaned == PREMIUM_REDEEM_CODE) {
+            val updated = _themeConfig.value.copy(
+                isPremiumUnlocked = true,
+                appTier = com.example.data.AppTier.PREMIUM
+            )
+            _themeConfig.value = updated
+            prefsManager.saveThemeConfig(updated)
+            com.example.audio.CyberHapticsEngine.triggerBenchmarkSuccess(getApplication())
+            com.example.audio.CyberSoundscapeEngine.playCryoChime()
+            repository.addManualSessionLog(
+                title = "Premium Tier Unlocked",
+                desc = "Activated lifetime PREMIUM access via Redeem Code ($PREMIUM_REDEEM_CODE).",
+                statTag = "PREMIUM",
+                type = "check"
+            )
+            return true
+        }
+        return false
+    }
+
     fun equipCyberSkin(skin: com.example.data.CyberSkin) {
         val argb = (skin.primaryColor.value shr 32).toLong()
         // Retain the current user's dark/light mode preference unchanged
@@ -245,5 +274,9 @@ class AmperePulseViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleThermalSimulation(forceOverheat: Boolean? = null) {
         repository.toggleThermalSimulation(forceOverheat)
+    }
+
+    companion object {
+        const val PREMIUM_REDEEM_CODE = "charfeddine23a"
     }
 }
