@@ -25,6 +25,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,22 +37,33 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Slider
@@ -62,6 +74,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -333,7 +348,7 @@ fun LuxuryHamburgerButton(
 }
 
 /**
- * Slide-over frosted glass settings drawer with Neumorphic styling
+ * Modern, Simple, Dynamic & Eye-Friendly Slide-Over Luxury Settings Drawer
  */
 @Composable
 fun LuxurySettingsDrawer(
@@ -352,20 +367,33 @@ fun LuxurySettingsDrawer(
         BackHandler { onClose() }
     }
 
+    val context = LocalContext.current
     val isDark = themeConfig.isDarkMode
     val accentColor = themeConfig.accentColor
 
-    val drawerBg = if (isDark) Color(0xF71E293B) else Color(0xFBF8FAFD)
-    val cardBg = if (isDark) Color(0xFF0F172A) else Color(0xFFFFFFFF)
-    val textColor = if (isDark) TextWhite else TextCharcoal
+    // Eye-friendly soft Nordic twilight (Dark) & warm porcelain mist (Light) palette
+    val drawerBgBrush = if (isDark) {
+        Brush.verticalGradient(colors = listOf(Color(0xF8151D2C), Color(0xFA101622)))
+    } else {
+        Brush.verticalGradient(colors = listOf(Color(0xFCF7F9FD), Color(0xFCEFF4FA)))
+    }
+    val surfaceCardColor = if (isDark) Color(0xFF1B2436) else Color(0xFFFFFFFF)
+    val softTileColor = if (isDark) Color(0xFF212C42) else Color(0xFFF1F5FA)
+    val subtleBorder = if (isDark) Color(0xFF2A364F) else Color(0xFFE3EAF3)
+    val textColor = if (isDark) Color(0xFFE9EFF8) else TextCharcoal
+    val subTextColor = if (isDark) Color(0xFF93A5BF) else TextSlate
+
+    var expandAppearance by remember { mutableStateOf(false) }
+    var expandProtection by remember { mutableStateOf(false) }
+    var expandCalibration by remember { mutableStateOf(false) }
 
     AnimatedVisibility(
         visible = isOpen,
-        enter = fadeIn() + slideInHorizontally(
+        enter = fadeIn(tween(220)) + slideInHorizontally(
             initialOffsetX = { it },
-            animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessMediumLow)
+            animationSpec = spring(dampingRatio = 0.84f, stiffness = Spring.StiffnessMediumLow)
         ),
-        exit = fadeOut() + slideOutHorizontally(
+        exit = fadeOut(tween(180)) + slideOutHorizontally(
             targetOffsetX = { it },
             animationSpec = spring(stiffness = Spring.StiffnessMedium)
         )
@@ -373,96 +401,152 @@ fun LuxurySettingsDrawer(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0x55000000))
-                .clickable { onClose() },
+                .background(Color(0x66060B14))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { onClose() },
             contentAlignment = Alignment.CenterEnd
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .fillMaxWidth(0.85f)
-                    .clickable(enabled = false) {}
-                    .clip(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
-                    .background(drawerBg)
+                    .fillMaxWidth(0.86f)
+                    .widthIn(max = 420.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { /* consume touches inside drawer */ }
+                    .clip(RoundedCornerShape(topStart = 30.dp, bottomStart = 30.dp))
+                    .background(drawerBgBrush)
                     .border(
                         1.dp,
-                        if (isDark) Color(0x33475569) else Color(0x4DE2E8F0),
-                        RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp)
+                        subtleBorder,
+                        RoundedCornerShape(topStart = 30.dp, bottomStart = 30.dp)
                     )
                     .windowInsetsPadding(WindowInsets.statusBars)
-                    .padding(20.dp)
+                    .navigationBarsPadding()
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Header
+                    // 1. Minimal Luxury Header
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "APPEARANCE & SYSTEM",
+                                text = "الإعدادات",
                                 fontFamily = OutfitFontFamily,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp,
-                                letterSpacing = (-0.2).sp,
+                                fontSize = 22.sp,
                                 color = textColor
                             )
                             Text(
-                                text = "Neumorphic & Soft Glass Engine",
+                                text = "تخصيص بسيط وسلس لتجربة Ampere Pulse",
                                 fontFamily = PlusJakartaSansFontFamily,
                                 fontSize = 11.sp,
-                                color = TextSlate
+                                color = subTextColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(if (isDark) Color(0xFF334155) else Color(0xFFE2E8F0))
-                                .clickable { onClose() },
-                            contentAlignment = Alignment.Center
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close",
-                                tint = textColor,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            // Quick Eye-Comfort Theme Switch Pill
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(surfaceCardColor)
+                                    .border(1.dp, subtleBorder, CircleShape)
+                                    .clickable {
+                                        CyberHapticsEngine.triggerTactileTick(context)
+                                        onConfigChange(themeConfig.copy(isDarkMode = !isDark))
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                    contentDescription = "تبديل المظهر",
+                                    tint = accentColor,
+                                    modifier = Modifier.size(19.dp)
+                                )
+                            }
+
+                            // Accessible Close Button
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(surfaceCardColor)
+                                    .border(1.dp, subtleBorder, CircleShape)
+                                    .clickable {
+                                        CyberHapticsEngine.triggerTactileTick(context)
+                                        onClose()
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "إغلاق الإعدادات",
+                                    tint = subTextColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Cyber Skin Vault Promo Banner (متجر الأقنعة والثيمات السيبرانية)
+                    // 2. Cyber Skin Vault Sleek Showcase Banner
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(accentColor.copy(alpha = if (isDark) 0.18f else 0.10f))
-                            .border(1.2.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                            .heightIn(min = 64.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        accentColor.copy(alpha = if (isDark) 0.22f else 0.12f),
+                                        surfaceCardColor
+                                    )
+                                )
+                            )
+                            .border(
+                                1.dp,
+                                accentColor.copy(alpha = if (isDark) 0.42f else 0.28f),
+                                RoundedCornerShape(20.dp)
+                            )
                             .clickable {
+                                CyberHapticsEngine.triggerTactileTick(context)
                                 onClose()
                                 onOpenSkinVault()
                             }
-                            .padding(14.dp)
+                            .padding(horizontal = 14.dp, vertical = 12.dp)
                             .testTag("drawer_cyber_vault_banner")
                     ) {
                         Row(
+                            modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(accentColor.copy(alpha = 0.25f)),
+                                        .size(40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(accentColor.copy(alpha = if (isDark) 0.24f else 0.14f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -475,306 +559,120 @@ fun LuxurySettingsDrawer(
                                 Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
-                                        text = "CYBER SKIN VAULT",
+                                        text = "متجر الثيمات الزجاجية",
                                         fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp,
+                                        fontSize = 13.5.sp,
                                         color = textColor
                                     )
                                     Text(
-                                        text = "متجر الأقنعة والثيمات السيبرانية",
+                                        text = "أقنعة ومؤثرات بصرية مريحة للعين",
                                         fontFamily = PlusJakartaSansFontFamily,
-                                        fontSize = 11.sp,
-                                        color = accentColor,
-                                        fontWeight = FontWeight.Medium
+                                        fontSize = 10.5.sp,
+                                        color = subTextColor
                                     )
                                 }
                             }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // Dark Mode Toggle Row
-                    DrawerToggleRow(
-                        title = "Dark Slate Mode",
-                        subtitle = "Switch between Light Neumorphism and Dark Slate glass",
-                        checked = themeConfig.isDarkMode,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(isDarkMode = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // 120Hz / 120 FPS Ultra Motion Acceleration Toggle
-                    DrawerToggleRow(
-                        title = "120Hz / 120 FPS Ultra Fluidity Lock",
-                        subtitle = "Hardware-accelerated 120 FPS ProMotion render pipeline with ultra-low latency",
-                        checked = themeConfig.target120FpsMode,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(target120FpsMode = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Liquid Droplet Visibility Toggle (إخفاء القطرة والاكتفاء بالسحب)
-                    DrawerToggleRow(
-                        title = "Apple Liquid Glass Droplet (إظهار القطرة)",
-                        subtitle = "تفعيل أو إخفاء قطرة الزجاج السائل في الشريط السفلي والاكتفاء بالسحب والتنقل المباشر",
-                        checked = themeConfig.showLiquidDroplet,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(showLiquidDroplet = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    // App Tier Selector (Free / VIP / Premium)
-                    Text(
-                        text = "APPLICATION TIER (نوع التطبيق)",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.5.sp,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "اختر صنف الحساب لإعطاء توهج ولون نيون ديناميكي في الشريط العلوي",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 10.5.sp,
-                        color = TextSlate
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        com.example.data.AppTier.values().forEach { tierOption ->
-                            val isSelected = themeConfig.appTier == tierOption
-                            val tColor = tierOption.color
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(
-                                        if (isSelected) tColor.copy(alpha = if (isDark) 0.28f else 0.16f) else cardBg
-                                    )
-                                    .border(
-                                        1.2.dp,
-                                        if (isSelected) tColor else Color(0x3394A3B8),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .clickable {
-                                        onConfigChange(themeConfig.copy(appTier = tierOption))
-                                    }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = tierOption.label,
-                                        fontFamily = OutfitFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        letterSpacing = 0.6.sp,
-                                        color = if (isSelected) tColor else TextSlate
-                                    )
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .size(5.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isSelected) tColor else Color.Transparent)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // Accent Palette Picker
-                    Text(
-                        text = "ACCENT COLOR PALETTE",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.5.sp,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf(
-                            Triple("Blue", TactileRoyalBlue, 0),
-                            Triple("Green", TactileGreen, 1),
-                            Triple("Red", TactileCoralRed, 2),
-                            Triple("Violet", TactileViolet, 3)
-                        ).forEach { (name, color, idx) ->
-                            val isSelected = themeConfig.accentColorIndex == idx
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(if (isSelected) color.copy(alpha = 0.2f) else cardBg)
-                                    .border(
-                                        1.dp,
-                                        if (isSelected) color else Color(0x3394A3B8),
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { onConfigChange(themeConfig.copy(accentColorIndex = idx)) }
-                                    .padding(vertical = 8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = name,
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    color = if (isSelected) color else TextSlate
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Temperature Scale Switcher
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "Temperature Unit",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 13.sp,
-                                color = textColor
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(20.dp)
                             )
-                            Text(
-                                text = "Thermal readout scale",
-                                fontFamily = PlusJakartaSansFontFamily,
-                                fontSize = 11.sp,
-                                color = TextSlate
+                        }
+                    }
+
+                    // 3. Dynamic 2x2 Quick Glass Control Grid
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            QuickControlTile(
+                                title = if (isDark) "الوضع الليلي" else "الوضع النهاري",
+                                status = if (isDark) "داكن هادئ" else "ناعم مريح",
+                                icon = if (isDark) Icons.Default.DarkMode else Icons.Default.LightMode,
+                                active = isDark,
+                                accentColor = accentColor,
+                                surfaceColor = surfaceCardColor,
+                                softColor = softTileColor,
+                                borderColor = subtleBorder,
+                                textColor = textColor,
+                                subTextColor = subTextColor,
+                                onClick = {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onConfigChange(themeConfig.copy(isDarkMode = !isDark))
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuickControlTile(
+                                title = "سلاسة 120Hz",
+                                status = if (themeConfig.target120FpsMode) "مفعّل" else "قياسي",
+                                icon = Icons.Default.Speed,
+                                active = themeConfig.target120FpsMode,
+                                accentColor = TactileCyan,
+                                surfaceColor = surfaceCardColor,
+                                softColor = softTileColor,
+                                borderColor = subtleBorder,
+                                textColor = textColor,
+                                subTextColor = subTextColor,
+                                onClick = {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onConfigChange(themeConfig.copy(target120FpsMode = !themeConfig.target120FpsMode))
+                                },
+                                modifier = Modifier.weight(1f)
                             )
                         }
 
                         Row(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isDark) Color(0xFF0F172A) else Color(0xFFE2E8F0))
-                                .padding(2.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (themeConfig.temperatureUnit == TemperatureUnit.CELSIUS)
-                                            accentColor.copy(alpha = 0.25f)
-                                        else Color.Transparent
-                                    )
-                                    .clickable {
-                                        onConfigChange(themeConfig.copy(temperatureUnit = TemperatureUnit.CELSIUS))
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("°C", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (themeConfig.temperatureUnit == TemperatureUnit.CELSIUS) accentColor else TextSlate)
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(
-                                        if (themeConfig.temperatureUnit == TemperatureUnit.FAHRENHEIT)
-                                            accentColor.copy(alpha = 0.25f)
-                                        else Color.Transparent
-                                    )
-                                    .clickable {
-                                        onConfigChange(themeConfig.copy(temperatureUnit = TemperatureUnit.FAHRENHEIT))
-                                    }
-                                    .padding(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("°F", fontFamily = OutfitFontFamily, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (themeConfig.temperatureUnit == TemperatureUnit.FAHRENHEIT) accentColor else TextSlate)
-                            }
+                            QuickControlTile(
+                                title = "الأصوات",
+                                status = if (themeConfig.soundEffectsEnabled) "مفعّلة" else "صامت",
+                                icon = Icons.Default.GraphicEq,
+                                active = themeConfig.soundEffectsEnabled,
+                                accentColor = TactileViolet,
+                                surfaceColor = surfaceCardColor,
+                                softColor = softTileColor,
+                                borderColor = subtleBorder,
+                                textColor = textColor,
+                                subTextColor = subTextColor,
+                                onClick = {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onConfigChange(themeConfig.copy(soundEffectsEnabled = !themeConfig.soundEffectsEnabled))
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuickControlTile(
+                                title = "الاهتزاز",
+                                status = if (themeConfig.hapticFeedbackEnabled) "تفاعلي" else "معطّل",
+                                icon = Icons.Default.Vibration,
+                                active = themeConfig.hapticFeedbackEnabled,
+                                accentColor = TactileGreen,
+                                surfaceColor = surfaceCardColor,
+                                softColor = softTileColor,
+                                borderColor = subtleBorder,
+                                textColor = textColor,
+                                subTextColor = subTextColor,
+                                onClick = {
+                                    CyberHapticsEngine.triggerTactileTick(context)
+                                    onConfigChange(themeConfig.copy(hapticFeedbackEnabled = !themeConfig.hapticFeedbackEnabled))
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // Safety & Audio Toggles
-                    DrawerToggleRow(
-                        title = "Futuristic Soundscape Effects",
-                        subtitle = "Play procedural audio cues on cable connect, sweeps, and state changes",
-                        checked = themeConfig.soundEffectsEnabled,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(soundEffectsEnabled = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "24/7 Background Telemetry Service",
-                        subtitle = "Run persistent foreground service to sample battery data in background/Doze",
-                        checked = themeConfig.backgroundServiceEnabled,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(backgroundServiceEnabled = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "80% Battery Longevity Alert",
-                        subtitle = "Chime when cell reaches 80% to protect lithium matrix",
-                        checked = themeConfig.alertOn80Percent,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(alertOn80Percent = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "Thermal Warning (>42°C)",
-                        subtitle = "Instant alert when cell thermistor spikes",
-                        checked = themeConfig.alertOnHighTemp,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(alertOnHighTemp = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "Haptic Pulse Feedback",
-                        subtitle = "Tactile clicks on charge plug and button taps",
-                        checked = themeConfig.hapticFeedbackEnabled,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(hapticFeedbackEnabled = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    DrawerToggleRow(
-                        title = "التحديث التلقائي من داخل التطبيق",
-                        subtitle = "فحص التحديثات تلقائياً من GitHub Releases (Ampere)",
-                        checked = themeConfig.autoUpdateEnabled,
-                        onCheckedChange = { onConfigChange(themeConfig.copy(autoUpdateEnabled = it)) },
-                        accentColor = accentColor,
-                        textColor = textColor
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // Luxurious, Breathing & Dynamic Auto-Update Status Container
+                    // 4. Luxurious, Breathing & Dynamic Auto-Update Card (with Auto Toggle integrated cleanly)
                     LuxuriousAutoUpdateStatusCard(
                         updateUiState = updateUiState,
+                        autoUpdateEnabled = themeConfig.autoUpdateEnabled,
+                        onToggleAutoUpdate = { enabled ->
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            onConfigChange(themeConfig.copy(autoUpdateEnabled = enabled))
+                        },
                         accentColor = accentColor,
                         isDark = isDark,
                         textColor = textColor,
@@ -787,82 +685,314 @@ fun LuxurySettingsDrawer(
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // CURRENT SENSOR CALIBRATION & NOISE FILTER ENGINE
-                    Text(
-                        text = "CURRENT SENSOR CALIBRATION (معايرة مقياس التيار)",
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 0.5.sp,
-                        color = textColor
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Adaptive EMA Noise Filter & Zero-Offset drift neutralizer across OEM chipsets",
-                        fontFamily = PlusJakartaSansFontFamily,
-                        fontSize = 10.5.sp,
-                        color = TextSlate
-                    )
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isDark) Color(0xFF0F172A) else Color(0xFFF1F5F9))
-                            .border(1.dp, if (isDark) Color(0x33475569) else Color(0x66CBD5E1), RoundedCornerShape(16.dp))
-                            .padding(14.dp)
+                    // 5. Expandable Accordion: Appearance & Identity
+                    SettingsAccordionCard(
+                        title = "الألوان والهوية",
+                        summary = "${themeConfig.appTier.label} • ${if (themeConfig.temperatureUnit == TemperatureUnit.CELSIUS) "°C" else "°F"}",
+                        icon = Icons.Default.Palette,
+                        expanded = expandAppearance,
+                        onToggle = {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            expandAppearance = !expandAppearance
+                        },
+                        accentColor = accentColor,
+                        surfaceColor = surfaceCardColor,
+                        borderColor = subtleBorder,
+                        textColor = textColor,
+                        subTextColor = subTextColor
                     ) {
-                        Column {
-                            // Multiplier Slider Row
+                        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            // Soft Eye-Friendly Color Orbs
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "لون التمييز المريح للعين",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    color = subTextColor
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    listOf(
+                                        Triple("أزرق هادئ", Color(0xFF4F7DF3), 0),
+                                        Triple("زمردي", Color(0xFF1BBF75), 1),
+                                        Triple("مرجاني", Color(0xFFF06449), 2),
+                                        Triple("بنفسجي", Color(0xFF8B6EF3), 3)
+                                    ).forEach { (label, color, idx) ->
+                                        val isSelected = themeConfig.accentColorIndex == idx && themeConfig.customAccentHex == null
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .clickable {
+                                                    CyberHapticsEngine.triggerTactileTick(context)
+                                                    onConfigChange(
+                                                        themeConfig.copy(
+                                                            accentColorIndex = idx,
+                                                            customAccentHex = null
+                                                        )
+                                                    )
+                                                }
+                                                .padding(vertical = 6.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(34.dp)
+                                                    .clip(CircleShape)
+                                                    .background(color)
+                                                    .border(
+                                                        width = if (isSelected) 2.5.dp else 1.dp,
+                                                        color = if (isSelected) textColor else Color.White.copy(alpha = 0.25f),
+                                                        shape = CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (isSelected) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = label,
+                                                        tint = Color.White,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = label,
+                                                fontFamily = PlusJakartaSansFontFamily,
+                                                fontSize = 10.sp,
+                                                color = if (isSelected) textColor else subTextColor,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Tier Pills
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "فئة الحساب والشارة",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 12.sp,
+                                    color = subTextColor
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    com.example.data.AppTier.values().forEach { tierOption ->
+                                        val isSelected = themeConfig.appTier == tierOption
+                                        val tColor = tierOption.color
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .heightIn(min = 44.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(
+                                                    if (isSelected) tColor.copy(alpha = if (isDark) 0.22f else 0.14f)
+                                                    else softTileColor
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (isSelected) tColor.copy(alpha = 0.7f) else subtleBorder,
+                                                    RoundedCornerShape(12.dp)
+                                                )
+                                                .clickable {
+                                                    CyberHapticsEngine.triggerTactileTick(context)
+                                                    onConfigChange(themeConfig.copy(appTier = tierOption))
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = tierOption.label,
+                                                fontFamily = OutfitFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 11.5.sp,
+                                                color = if (isSelected) tColor else subTextColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Temperature Scale Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Gain Multiplier",
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.SemiBold,
+                                    text = "وحدة الحرارة",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 12.5.sp,
+                                    color = textColor
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(softTileColor)
+                                        .padding(3.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    listOf(
+                                        TemperatureUnit.CELSIUS to "°C",
+                                        TemperatureUnit.FAHRENHEIT to "°F"
+                                    ).forEach { (unit, label) ->
+                                        val selected = themeConfig.temperatureUnit == unit
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (selected) accentColor.copy(alpha = 0.22f) else Color.Transparent)
+                                                .clickable {
+                                                    CyberHapticsEngine.triggerTactileTick(context)
+                                                    onConfigChange(themeConfig.copy(temperatureUnit = unit))
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(
+                                                text = label,
+                                                fontFamily = OutfitFontFamily,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 12.sp,
+                                                color = if (selected) accentColor else subTextColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Liquid Droplet Toggle
+                            DrawerToggleRow(
+                                title = "قطرة الزجاج السائل",
+                                subtitle = "إظهار المؤشر العائم في شريط التنقل السفلي",
+                                checked = themeConfig.showLiquidDroplet,
+                                onCheckedChange = { onConfigChange(themeConfig.copy(showLiquidDroplet = it)) },
+                                accentColor = accentColor,
+                                textColor = textColor,
+                                subTextColor = subTextColor
+                            )
+                        }
+                    }
+
+                    // 6. Expandable Accordion: Protection & Background Alerts
+                    val activeProtectionCount = listOf(
+                        themeConfig.backgroundServiceEnabled,
+                        themeConfig.alertOn80Percent,
+                        themeConfig.alertOnHighTemp
+                    ).count { it }
+
+                    SettingsAccordionCard(
+                        title = "الحماية والتنبيهات",
+                        summary = "$activeProtectionCount من 3 مفعّلة",
+                        icon = Icons.Default.Shield,
+                        expanded = expandProtection,
+                        onToggle = {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            expandProtection = !expandProtection
+                        },
+                        accentColor = TactileGreen,
+                        surfaceColor = surfaceCardColor,
+                        borderColor = subtleBorder,
+                        textColor = textColor,
+                        subTextColor = subTextColor
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            DrawerToggleRow(
+                                title = "خدمة القياس في الخلفية 24/7",
+                                subtitle = "رصد استقرار الشحن والبطارية باستمرار",
+                                checked = themeConfig.backgroundServiceEnabled,
+                                onCheckedChange = { onConfigChange(themeConfig.copy(backgroundServiceEnabled = it)) },
+                                accentColor = accentColor,
+                                textColor = textColor,
+                                subTextColor = subTextColor
+                            )
+                            DrawerToggleRow(
+                                title = "تنبيه حماية البطارية 80%",
+                                subtitle = "إشعار لطيف لإطالة عمر خلايا الليثيوم",
+                                checked = themeConfig.alertOn80Percent,
+                                onCheckedChange = { onConfigChange(themeConfig.copy(alertOn80Percent = it)) },
+                                accentColor = accentColor,
+                                textColor = textColor,
+                                subTextColor = subTextColor
+                            )
+                            DrawerToggleRow(
+                                title = "تحذير الحرارة المرتفعة (>42°C)",
+                                subtitle = "تنبيه فوري عند ارتفاع حرارة المستشعر",
+                                checked = themeConfig.alertOnHighTemp,
+                                onCheckedChange = { onConfigChange(themeConfig.copy(alertOnHighTemp = it)) },
+                                accentColor = accentColor,
+                                textColor = textColor,
+                                subTextColor = subTextColor
+                            )
+                        }
+                    }
+
+                    // 7. Expandable Accordion: Sensor Calibration
+                    SettingsAccordionCard(
+                        title = "معايرة مقياس التيار",
+                        summary = "${String.format(Locale.US, "%.2fx", themeConfig.currentMultiplier)} • ${themeConfig.currentZeroOffsetMa.toInt()} mA",
+                        icon = Icons.Default.Tune,
+                        expanded = expandCalibration,
+                        onToggle = {
+                            CyberHapticsEngine.triggerTactileTick(context)
+                            expandCalibration = !expandCalibration
+                        },
+                        accentColor = TactileCyan,
+                        surfaceColor = surfaceCardColor,
+                        borderColor = subtleBorder,
+                        textColor = textColor,
+                        subTextColor = subTextColor
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "معامل الضبط (Gain)",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 12.sp,
                                     color = textColor
                                 )
                                 Text(
-                                    text = String.format(java.util.Locale.US, "%.2fx", themeConfig.currentMultiplier),
+                                    text = String.format(Locale.US, "%.2fx", themeConfig.currentMultiplier),
                                     fontFamily = OutfitFontFamily,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
                                     color = accentColor
                                 )
                             }
-                            androidx.compose.material3.Slider(
+                            Slider(
                                 value = themeConfig.currentMultiplier,
                                 onValueChange = {
                                     onConfigChange(themeConfig.copy(currentMultiplier = ((it * 100).toInt() / 100f)))
                                 },
                                 valueRange = 0.70f..1.40f,
                                 steps = 14,
-                                colors = androidx.compose.material3.SliderDefaults.colors(
+                                colors = SliderDefaults.colors(
                                     thumbColor = accentColor,
                                     activeTrackColor = accentColor,
-                                    inactiveTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
+                                    inactiveTrackColor = softTileColor
                                 )
                             )
 
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Zero Offset Slider Row
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "Zero Offset Drift (معايرة الصفر)",
-                                    fontFamily = OutfitFontFamily,
-                                    fontWeight = FontWeight.SemiBold,
+                                    text = "معايرة الصفر (Offset)",
+                                    fontFamily = PlusJakartaSansFontFamily,
+                                    fontWeight = FontWeight.Medium,
                                     fontSize = 12.sp,
                                     color = textColor
                                 )
@@ -874,33 +1004,32 @@ fun LuxurySettingsDrawer(
                                     color = accentColor
                                 )
                             }
-                            androidx.compose.material3.Slider(
+                            Slider(
                                 value = themeConfig.currentZeroOffsetMa,
                                 onValueChange = {
                                     onConfigChange(themeConfig.copy(currentZeroOffsetMa = it.toInt().toFloat()))
                                 },
                                 valueRange = -150f..150f,
                                 steps = 15,
-                                colors = androidx.compose.material3.SliderDefaults.colors(
+                                colors = SliderDefaults.colors(
                                     thumbColor = accentColor,
                                     activeTrackColor = accentColor,
-                                    inactiveTrackColor = if (isDark) Color(0xFF334155) else Color(0xFFCBD5E1)
+                                    inactiveTrackColor = softTileColor
                                 )
                             )
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            // Quick Reset to Factory Baseline
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(accentColor.copy(alpha = if (isDark) 0.22f else 0.12f))
-                                        .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                        .heightIn(min = 48.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(accentColor.copy(alpha = if (isDark) 0.18f else 0.10f))
+                                        .border(1.dp, accentColor.copy(alpha = 0.40f), RoundedCornerShape(12.dp))
                                         .clickable {
+                                            CyberHapticsEngine.triggerTactileTick(context)
                                             onConfigChange(
                                                 themeConfig.copy(
                                                     currentMultiplier = 1.0f,
@@ -908,13 +1037,14 @@ fun LuxurySettingsDrawer(
                                                 )
                                             )
                                         }
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = "RESET TO BASELINE",
+                                        text = "إعادة ضبط المصنع",
                                         fontFamily = OutfitFontFamily,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 10.sp,
+                                        fontSize = 11.sp,
                                         color = accentColor
                                     )
                                 }
@@ -922,8 +1052,203 @@ fun LuxurySettingsDrawer(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(30.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuickControlTile(
+    title: String,
+    status: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    active: Boolean,
+    accentColor: Color,
+    surfaceColor: Color,
+    softColor: Color,
+    borderColor: Color,
+    textColor: Color,
+    subTextColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (active) accentColor.copy(alpha = 0.14f) else surfaceColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "quickTileBg"
+    )
+    val strokeColor by animateColorAsState(
+        targetValue = if (active) accentColor.copy(alpha = 0.55f) else borderColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "quickTileBorder"
+    )
+
+    Box(
+        modifier = modifier
+            .heightIn(min = 68.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(bgColor)
+            .border(1.1.dp, strokeColor, RoundedCornerShape(18.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(if (active) accentColor.copy(alpha = 0.20f) else softColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (active) accentColor else subTextColor,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(if (active) accentColor else subTextColor.copy(alpha = 0.35f))
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = title,
+                fontFamily = OutfitFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = status,
+                fontFamily = PlusJakartaSansFontFamily,
+                fontSize = 10.sp,
+                color = if (active) accentColor else subTextColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsAccordionCard(
+    title: String,
+    summary: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    accentColor: Color,
+    surfaceColor: Color,
+    borderColor: Color,
+    textColor: Color,
+    subTextColor: Color,
+    content: @Composable () -> Unit
+) {
+    val arrowRotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = Spring.StiffnessMediumLow),
+        label = "accordionArrow"
+    )
+    val activeBorder by animateColorAsState(
+        targetValue = if (expanded) accentColor.copy(alpha = 0.45f) else borderColor,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "accordionBorder"
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.82f,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            )
+            .clip(RoundedCornerShape(20.dp))
+            .background(surfaceColor)
+            .border(1.1.dp, activeBorder, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clickable(onClick = onToggle),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accentColor.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(17.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontFamily = OutfitFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = textColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = summary,
+                        fontFamily = PlusJakartaSansFontFamily,
+                        fontSize = 10.5.sp,
+                        color = subTextColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = subTextColor,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = arrowRotation }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Column(modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)) {
+                content()
             }
         }
     }
@@ -936,10 +1261,14 @@ private fun DrawerToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     accentColor: Color,
-    textColor: Color
+    textColor: Color,
+    subTextColor: Color = TextSlate
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable { onCheckedChange(!checked) },
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -948,14 +1277,14 @@ private fun DrawerToggleRow(
                 text = title,
                 fontFamily = PlusJakartaSansFontFamily,
                 fontWeight = FontWeight.Medium,
-                fontSize = 13.sp,
+                fontSize = 12.5.sp,
                 color = textColor
             )
             Text(
                 text = subtitle,
                 fontFamily = PlusJakartaSansFontFamily,
                 fontSize = 10.sp,
-                color = TextSlate,
+                color = subTextColor,
                 lineHeight = 14.sp
             )
         }
@@ -966,7 +1295,7 @@ private fun DrawerToggleRow(
             colors = SwitchDefaults.colors(
                 checkedThumbColor = Color.White,
                 checkedTrackColor = accentColor,
-                uncheckedThumbColor = TextSlate,
+                uncheckedThumbColor = subTextColor,
                 uncheckedTrackColor = Color(0x3394A3B8)
             )
         )
@@ -981,6 +1310,8 @@ private fun DrawerToggleRow(
 @Composable
 private fun LuxuriousAutoUpdateStatusCard(
     updateUiState: InAppUpdateUiState,
+    autoUpdateEnabled: Boolean,
+    onToggleAutoUpdate: (Boolean) -> Unit,
     accentColor: Color,
     isDark: Boolean,
     textColor: Color,
@@ -1036,15 +1367,15 @@ private fun LuxuriousAutoUpdateStatusCard(
     val cardBaseBrush = if (isDark) {
         Brush.linearGradient(
             colors = listOf(
-                Color(0xFF10192D),
-                Color(0xFF0A1120)
+                Color(0xFF1B2436),
+                Color(0xFF141C2B)
             )
         )
     } else {
         Brush.linearGradient(
             colors = listOf(
                 Color(0xFFFFFFFF),
-                Color(0xFFF3F7FD)
+                Color(0xFFF4F7FC)
             )
         )
     }
@@ -1182,28 +1513,61 @@ private fun LuxuriousAutoUpdateStatusCard(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
 
-                // Dynamic Version Pill
-                val versionLabel = if (updateUiState.updateAvailable && !updateUiState.availableVersionName.isNullOrBlank()) {
-                    "v${updateUiState.currentVersionName} → v${updateUiState.availableVersionName}"
-                } else {
-                    "v${updateUiState.currentVersionName}"
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(statusColor.copy(alpha = if (isDark) 0.18f else 0.12f))
-                        .border(1.dp, statusColor.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = versionLabel,
-                        fontFamily = OutfitFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 10.5.sp,
-                        color = statusColor
-                    )
+                    // Compact Auto-Update Toggle Pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                if (autoUpdateEnabled) {
+                                    accentColor.copy(alpha = if (isDark) 0.22f else 0.12f)
+                                } else {
+                                    if (isDark) Color(0xFF232F45) else Color(0xFFEAF0F7)
+                                }
+                            )
+                            .border(
+                                1.dp,
+                                if (autoUpdateEnabled) accentColor.copy(alpha = 0.50f) else Color.Transparent,
+                                RoundedCornerShape(10.dp)
+                            )
+                            .clickable { onToggleAutoUpdate(!autoUpdateEnabled) }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (autoUpdateEnabled) "تلقائي" else "يدوي",
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.sp,
+                            color = if (autoUpdateEnabled) accentColor else TextSlate
+                        )
+                    }
+
+                    // Dynamic Version Pill
+                    val versionLabel = if (updateUiState.updateAvailable && !updateUiState.availableVersionName.isNullOrBlank()) {
+                        "v${updateUiState.currentVersionName} → v${updateUiState.availableVersionName}"
+                    } else {
+                        "v${updateUiState.currentVersionName}"
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(statusColor.copy(alpha = if (isDark) 0.18f else 0.12f))
+                            .border(1.dp, statusColor.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = versionLabel,
+                            fontFamily = OutfitFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 10.5.sp,
+                            color = statusColor
+                        )
+                    }
                 }
             }
 
